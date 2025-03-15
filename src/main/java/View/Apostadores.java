@@ -3,10 +3,8 @@ package View;
 import Config.Run;
 import Controller.Apostadores_Controller;
 import Controller.State_Controller;
-import java.awt.Color;
 import java.awt.Frame;
 import java.awt.event.KeyEvent;
-import javax.swing.JDialog;
 import javax.swing.JOptionPane;
 import javax.swing.table.DefaultTableModel;
 
@@ -29,7 +27,6 @@ public class Apostadores extends javax.swing.JDialog {
         txtIdapostadores.setVisible(false);
         txtNumero.setEditable(false);
         txtNumero.setText(String.valueOf(controller.getMaxCodigo()));
-        txtNumero.setBackground(Color.white);
         txtNumero.transferFocus();
         txtCedula.requestFocus();
         showApostadores("", stateFilter);

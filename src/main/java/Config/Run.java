@@ -2,8 +2,10 @@ package Config;
 
 import Controller.Fecha_Controller;
 import Controller.State_Controller;
+import Model.Vencidos_Model;
 import View.Principal;
 import com.formdev.flatlaf.FlatLightLaf;
+import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.swing.SwingUtilities;
@@ -18,6 +20,7 @@ import javax.swing.table.DefaultTableModel;
 public class Run {
 
     public static DefaultTableModel model;
+    public static List<Vencidos_Model> apuestasVencidas;
 
     public static void main(String[] args) {
         try {
@@ -27,7 +30,10 @@ public class Run {
             Logger.getLogger(Run.class.getName()).log(Level.SEVERE, null, ex);
         }
 
-        // Cargar el modelo de estados (u otra información inicial)
+        // 🔹 Crear la base de datos antes de cualquier consulta
+        DataSource.createDatabase();
+
+        // Cargar el modelo de estados
         model = State_Controller.states();
 
         if (model != null) {
@@ -43,17 +49,15 @@ public class Run {
         Principal form = new Principal();
         form.setVisible(true);
 
-        // Realizar la comprobación de apuestas vencidas cuando se inicia el sistema
-        DefaultTableModel updatedModel = Fecha_Controller.checkPending();
+        // Cargar apuestas vencidas
+        apuestasVencidas = Fecha_Controller.checkPending();
 
-        // Obtener la cantidad de apuestas vencidas
-        int cantidadVencidas = Fecha_Controller.getTotalPendientes();
-        System.out.println("Cantidad de apuestas vencidas al iniciar: " + cantidadVencidas);
-
-        // Actualizar la interfaz en el EDT
+        // Mostrar notificación si hay apuestas vencidas
         SwingUtilities.invokeLater(() -> {
-            Principal.pnlNotificaciones.setVisible(cantidadVencidas > 0);
-            Principal.lblCantidadNotificaciones.setText(String.valueOf(cantidadVencidas));
+            if (!apuestasVencidas.isEmpty()) {
+                Principal.pnlNotificaciones.setVisible(true);
+                Principal.lblCantidadNotificaciones.setText(String.valueOf(apuestasVencidas.size()));
+            }
         });
     }
 }

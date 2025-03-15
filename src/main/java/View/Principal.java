@@ -3,6 +3,7 @@ package View;
 import Controller.Carreras_Controller;
 import java.awt.Frame;
 import java.awt.Image;
+import java.io.File;
 import javax.swing.ImageIcon;
 import javax.swing.JOptionPane;
 import javax.swing.table.DefaultTableModel;
@@ -21,11 +22,18 @@ public class Principal extends javax.swing.JFrame {
     public Principal() {
         initComponents();
         this.setExtendedState(MAXIMIZED_BOTH);
+        pnlNotificaciones.setVisible(false);
         rbtnPendiente.setSelected(true);
 //        ImageIcon icono = new ImageIcon("src/Images/notificacion.png");
 //        btnNotificaciones.setIcon(icono);
         showCarrerasInPrincipal("", statusFilter);
         notificacion();
+        File file2 = new File("src/main/resources/Images/icono5.png");
+        String absolutePath2 = file2.getAbsolutePath();
+
+        ImageIcon iconoOriginal2 = new ImageIcon(absolutePath2);
+        Image imagenOriginal2 = iconoOriginal2.getImage();
+        this.setIconImage(imagenOriginal2);
     }
 
     public void showCarrerasInPrincipal(String search, String statusFilter) {
@@ -39,12 +47,16 @@ public class Principal extends javax.swing.JFrame {
     }
 
     private void notificacion() {
-        ImageIcon iconoOriginal = new ImageIcon("src/main/resources/Images/notificacion.png");
+        // Convertir ruta relativa a ruta absoluta
+        File file = new File("src/main/resources/Images/notificacion.png");
+        String absolutePath = file.getAbsolutePath();
+
+        ImageIcon iconoOriginal = new ImageIcon(absolutePath);
         Image imagenOriginal = iconoOriginal.getImage();
 
-        // Redimensiona la imagen (ajusta ancho y alto a tus necesidades)
-        int nuevoAncho = 50;  // Ejemplo: 100 píxeles de ancho
-        int nuevoAlto = 32;   // Ejemplo: 100 píxeles de alto
+        // Redimensionar la imagen
+        int nuevoAncho = 53;
+        int nuevoAlto = 38;
         Image imagenRedimensionada = imagenOriginal.getScaledInstance(nuevoAncho, nuevoAlto, Image.SCALE_SMOOTH);
 
         // Crea un nuevo ImageIcon con la imagen redimensionada
@@ -72,6 +84,7 @@ public class Principal extends javax.swing.JFrame {
         mnuBalance = new javax.swing.JMenu();
         mnuApostadores = new javax.swing.JMenu();
         mnuCaballos = new javax.swing.JMenu();
+        jMenu1 = new javax.swing.JMenu();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
 
@@ -157,8 +170,10 @@ public class Principal extends javax.swing.JFrame {
         lblCantidadNotificaciones.setText("99");
         lblCantidadNotificaciones.setName(""); // NOI18N
         lblCantidadNotificaciones.setOpaque(true);
-        pnlNotificaciones.add(lblCantidadNotificaciones, new org.netbeans.lib.awtextra.AbsoluteConstraints(81, 6, -1, -1));
-        pnlNotificaciones.add(lblIcono, new org.netbeans.lib.awtextra.AbsoluteConstraints(51, 1, 50, 37));
+        pnlNotificaciones.add(lblCantidadNotificaciones, new org.netbeans.lib.awtextra.AbsoluteConstraints(32, 5, 15, 15));
+
+        lblIcono.setIcon(new javax.swing.ImageIcon(getClass().getResource("/Images/notificacion.png"))); // NOI18N
+        pnlNotificaciones.add(lblIcono, new org.netbeans.lib.awtextra.AbsoluteConstraints(0, 0, 60, 38));
 
         mnuCarreras.setText("Carreras");
         mnuCarreras.addMouseListener(new java.awt.event.MouseAdapter() {
@@ -200,17 +215,20 @@ public class Principal extends javax.swing.JFrame {
         });
         jMenuBar1.add(mnuCaballos);
 
+        jMenu1.setText("Ajustes");
+        jMenuBar1.add(jMenu1);
+
         setJMenuBar(jMenuBar1);
 
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
         getContentPane().setLayout(layout);
         layout.setHorizontalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
+            .addGroup(layout.createSequentialGroup()
                 .addContainerGap()
-                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
-                    .addComponent(jScrollPane1, javax.swing.GroupLayout.DEFAULT_SIZE, 956, Short.MAX_VALUE)
-                    .addGroup(layout.createSequentialGroup()
+                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addComponent(jScrollPane1, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.DEFAULT_SIZE, 956, Short.MAX_VALUE)
+                    .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
                         .addGap(0, 0, Short.MAX_VALUE)
                         .addComponent(pnlNotificaciones, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
@@ -220,12 +238,12 @@ public class Principal extends javax.swing.JFrame {
         layout.setVerticalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(layout.createSequentialGroup()
-                .addContainerGap()
+                .addGap(7, 7, 7)
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addComponent(pnlNotificaciones, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(jPanel1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(jScrollPane1, javax.swing.GroupLayout.DEFAULT_SIZE, 562, Short.MAX_VALUE)
+                    .addComponent(jPanel1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(pnlNotificaciones, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addGap(18, 18, 18)
+                .addComponent(jScrollPane1, javax.swing.GroupLayout.DEFAULT_SIZE, 628, Short.MAX_VALUE)
                 .addContainerGap())
         );
 
@@ -330,6 +348,7 @@ public class Principal extends javax.swing.JFrame {
     }
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
+    private javax.swing.JMenu jMenu1;
     private javax.swing.JMenuBar jMenuBar1;
     private javax.swing.JPanel jPanel1;
     private javax.swing.JScrollPane jScrollPane1;

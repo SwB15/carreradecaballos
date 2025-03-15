@@ -47,6 +47,7 @@ public class PerfilApostador extends javax.swing.JDialog {
         txtNombre.setEditable(false);
         txtNombre.setBackground(Color.white);
         showHistorial(idApostador);
+        btnImprimir.setEnabled(false);
     }
 
     private void showHistorial(int id) {

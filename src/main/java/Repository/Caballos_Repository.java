@@ -6,9 +6,6 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.swing.JOptionPane;
@@ -46,21 +43,6 @@ public class Caballos_Repository{
             pst.setString(3, model.getObservacion());
             pst.setInt(4, model.getFk_estados());
             pst.setInt(5, model.getIdcaballos());
-
-            int N = pst.executeUpdate();
-            return N != 0;
-        } catch (SQLException ex) {
-            Logger.getLogger(Caballos_Repository.class.getName()).log(Level.SEVERE, null, ex);
-            return false;
-        }
-    }
-    
-    public boolean disable(Caballos_Model model) {
-        sql = "UPDATE caballos SET fk_estados = ? WHERE idcaballos = ?";
-        try (Connection cn = DataSource.getConnection()) {
-            pst = cn.prepareStatement(sql);
-            pst.setInt(1, model.getFk_estados());
-            pst.setInt(2, model.getIdcaballos());
 
             int N = pst.executeUpdate();
             return N != 0;

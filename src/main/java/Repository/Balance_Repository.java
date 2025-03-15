@@ -76,11 +76,10 @@ public class Balance_Repository {
         int totalGanancia = 0;
 
         String sSQL = "SELECT a.monto FROM apuestas a "
-                + "JOIN detalleapuestas da ON a.idapuestas = da.fk_apuestas "
-                + "JOIN carreras ca ON da.fk_carreras = ca.idcarreras "
+                + "JOIN carreras ca ON a.fk_carreras = ca.idcarreras "
                 + "JOIN detallecarreras dc ON ca.idcarreras = dc.fk_carreras "
                 + "JOIN caballos c ON dc.fk_caballos = c.idcaballos "
-                + "WHERE ca.idcarreras = ? AND c.idcaballos = (SELECT fk_caballos FROM detallecarreras WHERE fk_carreras = ?)";
+                + "WHERE ca.idcarreras = ? AND c.idcaballos IN (SELECT fk_caballos FROM detallecarreras WHERE fk_carreras = ?)";
 
         try (Connection cn = DataSource.getConnection(); PreparedStatement pst = cn.prepareStatement(sSQL)) {
             pst.setInt(1, raceId);
