@@ -2,8 +2,11 @@ package View;
 
 import Controller.Carreras_Controller;
 import java.awt.Frame;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
 import java.util.ArrayList;
 import java.util.List;
+import javax.swing.JDialog;
 import javax.swing.JOptionPane;
 import javax.swing.JTable;
 import javax.swing.table.DefaultTableModel;
@@ -22,6 +25,14 @@ public class CargarCaballos extends javax.swing.JDialog {
         initComponents();
         this.setLocationRelativeTo(null);
         showCaballosInCarreras("");
+
+        this.setDefaultCloseOperation(JDialog.DO_NOTHING_ON_CLOSE);
+        this.addWindowListener(new WindowAdapter() {
+            @Override
+            public void windowClosing(WindowEvent e) {
+                confirmarSeleccionAntesDeCerrar();
+            }
+        });
     }
 
     private void showCaballosInCarreras(String search) {
@@ -68,10 +79,33 @@ public class CargarCaballos extends javax.swing.JDialog {
         }
     }
 
-    private void ocultar_columnas(JTable table) {
-        table.getColumnModel().getColumn(0).setMaxWidth(0);
-        table.getColumnModel().getColumn(0).setMinWidth(0);
-        table.getColumnModel().getColumn(0).setPreferredWidth(0);
+    private void confirmarSeleccionAntesDeCerrar() {
+        boolean haySeleccionados = false;
+        DefaultTableModel model = (DefaultTableModel) tblCargarcaballos.getModel();
+
+        for (int i = 0; i < model.getRowCount(); i++) {
+            Boolean isSelected = (Boolean) model.getValueAt(i, 0);
+            if (isSelected != null && isSelected) {
+                haySeleccionados = true;
+                break;
+            }
+        }
+
+        // Si hay seleccionados, mostrar confirmación
+        if (haySeleccionados) {
+            int confirm = JOptionPane.showConfirmDialog(this,
+                    "¿Desea utilizar los caballos seleccionados?",
+                    "Confirmar selección",
+                    JOptionPane.YES_NO_OPTION);
+
+            if (confirm == JOptionPane.YES_OPTION) {
+                btnSaveActionPerformed(null);
+            } else if (confirm == JOptionPane.NO_OPTION) {
+                this.dispose();
+            }
+        } else {
+            this.dispose();
+        }
     }
 
     @SuppressWarnings("unchecked")
@@ -85,7 +119,7 @@ public class CargarCaballos extends javax.swing.JDialog {
         jLabel1 = new javax.swing.JLabel();
         jSeparator1 = new javax.swing.JSeparator();
         btnCancelar = new javax.swing.JButton();
-        btnGuardar = new javax.swing.JButton();
+        btnSave = new javax.swing.JButton();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.DISPOSE_ON_CLOSE);
         setTitle("Cargar Caballos");
@@ -119,11 +153,16 @@ public class CargarCaballos extends javax.swing.JDialog {
         jLabel1.setText("Buscar:");
 
         btnCancelar.setText("Cancelar");
-
-        btnGuardar.setText("Guardar");
-        btnGuardar.addActionListener(new java.awt.event.ActionListener() {
+        btnCancelar.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
-                btnGuardarActionPerformed(evt);
+                btnCancelarActionPerformed(evt);
+            }
+        });
+
+        btnSave.setText("Guardar");
+        btnSave.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                btnSaveActionPerformed(evt);
             }
         });
 
@@ -135,7 +174,7 @@ public class CargarCaballos extends javax.swing.JDialog {
                 .addContainerGap()
                 .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
                     .addGroup(jPanel1Layout.createSequentialGroup()
-                        .addComponent(btnGuardar)
+                        .addComponent(btnSave)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                         .addComponent(btnCancelar))
                     .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING, false)
@@ -158,7 +197,7 @@ public class CargarCaballos extends javax.swing.JDialog {
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(btnCancelar)
-                    .addComponent(btnGuardar))
+                    .addComponent(btnSave))
                 .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
         );
 
@@ -186,7 +225,7 @@ public class CargarCaballos extends javax.swing.JDialog {
         pack();
     }// </editor-fold>//GEN-END:initComponents
 
-    private void btnGuardarActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnGuardarActionPerformed
+    private void btnSaveActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnSaveActionPerformed
         List<String> nombresCaballos = new ArrayList<>();
         List<String> idsCaballos = new ArrayList<>();
 
@@ -207,12 +246,16 @@ public class CargarCaballos extends javax.swing.JDialog {
             JOptionPane.showMessageDialog(this, "Debe seleccionar al menos un caballo.", "Advertencia", JOptionPane.WARNING_MESSAGE);
         }
 
-        this.dispose(); // Cerrar el diálogo
-    }//GEN-LAST:event_btnGuardarActionPerformed
+        this.dispose();
+    }//GEN-LAST:event_btnSaveActionPerformed
 
     private void txtBuscarKeyReleased(java.awt.event.KeyEvent evt) {//GEN-FIRST:event_txtBuscarKeyReleased
         showCaballosInCarreras(txtBuscar.getText());
     }//GEN-LAST:event_txtBuscarKeyReleased
+
+    private void btnCancelarActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnCancelarActionPerformed
+        this.dispose();
+    }//GEN-LAST:event_btnCancelarActionPerformed
 
     Frame f = JOptionPane.getFrameForComponent(this);
 
@@ -260,7 +303,7 @@ public class CargarCaballos extends javax.swing.JDialog {
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JButton btnCancelar;
-    private javax.swing.JButton btnGuardar;
+    private javax.swing.JButton btnSave;
     private javax.swing.JLabel jLabel1;
     private javax.swing.JPanel jPanel1;
     private javax.swing.JScrollPane jScrollPane1;

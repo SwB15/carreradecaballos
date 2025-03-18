@@ -7,6 +7,7 @@ import java.text.DecimalFormat;
 import java.util.HashMap;
 import java.util.Map;
 import javax.swing.JOptionPane;
+import javax.swing.JTable;
 import javax.swing.table.DefaultTableModel;
 
 /**
@@ -43,23 +44,35 @@ public class Balance extends javax.swing.JDialog {
             DefaultTableModel model = controller.showResultados(idcarreras);
             model.addColumn("Monto Neto");
 
-            // Recorrer filas y calcular el monto neto para los ganadores
+            // Recorrer filas y calcular el monto neto para los ganadores y perdedores
             for (int i = 0; i < model.getRowCount(); i++) {
                 String resultado = model.getValueAt(i, 5).toString();
+                int monto = Integer.parseInt(model.getValueAt(i, 3).toString());
+
                 if (resultado.equalsIgnoreCase("Ganador")) {
-                    int monto = Integer.parseInt(model.getValueAt(i, 3).toString());
-                    int montoNeto = (monto * 90) / 100; // Calcula 90% sin usar double
-                    model.setValueAt(montoNeto, i, 6);
+                    int montoNeto = (monto * 90) / 100; // 90% del monto para el ganador
+                    model.setValueAt(formateador14.format(montoNeto), i, 6);
                 } else {
-                    model.setValueAt("", i, 6); // Dejar vacío si es perdedor
+                    model.setValueAt(formateador14.format(-monto), i, 6); // Monto negativo si es perdedor
                 }
             }
 
             tblBalance.setModel(model);
+            ocultar_columnas(tblBalance);
             calcularResultados();
-        } catch (Exception e) {
-            JOptionPane.showMessageDialog(null, e);
+        } catch (NumberFormatException e) {
+            JOptionPane.showMessageDialog(null, "Error en el formato del número: " + e.getMessage());
         }
+    }
+
+    private void ocultar_columnas(JTable table) {
+        table.getColumnModel().getColumn(0).setMaxWidth(0);
+        table.getColumnModel().getColumn(0).setMinWidth(0);
+        table.getColumnModel().getColumn(0).setPreferredWidth(0);
+
+        table.getColumnModel().getColumn(2).setMaxWidth(0);
+        table.getColumnModel().getColumn(2).setMinWidth(0);
+        table.getColumnModel().getColumn(2).setPreferredWidth(0);
     }
 
     // Método para cargar las carreras en el ComboBox
@@ -118,7 +131,7 @@ public class Balance extends javax.swing.JDialog {
         for (int i = 0; i < model.getRowCount(); i++) {
             apuestas++;
             String resultado = model.getValueAt(i, 5).toString(); // Columna "Resultado"
-            int monto = Integer.parseInt(model.getValueAt(i, 3).toString()); // Columna "Monto"
+            int monto = Integer.parseInt(model.getValueAt(i, 3).toString().replace(".", "")); // Columna "Monto"
 
             totalApostado += monto; // Suma total de apuestas
 
@@ -314,7 +327,7 @@ public class Balance extends javax.swing.JDialog {
                 .addContainerGap()
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                     .addComponent(jPanel1, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                    .addComponent(jScrollPane2))
+                    .addComponent(jScrollPane2, javax.swing.GroupLayout.Alignment.TRAILING))
                 .addContainerGap())
         );
         layout.setVerticalGroup(
@@ -322,8 +335,8 @@ public class Balance extends javax.swing.JDialog {
             .addGroup(layout.createSequentialGroup()
                 .addContainerGap()
                 .addComponent(jPanel1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                .addComponent(jScrollPane2, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(jScrollPane2)
                 .addContainerGap())
         );
 

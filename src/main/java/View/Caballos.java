@@ -5,6 +5,7 @@ import Controller.Caballos_Controller;
 import Controller.State_Controller;
 import java.awt.event.KeyEvent;
 import javax.swing.JOptionPane;
+import javax.swing.JTable;
 import javax.swing.table.DefaultTableModel;
 
 /**
@@ -36,10 +37,16 @@ public class Caballos extends javax.swing.JDialog {
             DefaultTableModel model;
             model = controller.showCaballos(search, stateFilter);
             tblCaballos.setModel(model);
-//            ocultar_columnas(tblCaballos);
+            ocultar_columnas(tblCaballos);
         } catch (Exception e) {
             JOptionPane.showMessageDialog(null, e);
         }
+    }
+    
+    private void ocultar_columnas(JTable table) {
+        table.getColumnModel().getColumn(0).setMaxWidth(0);
+        table.getColumnModel().getColumn(0).setMinWidth(0);
+        table.getColumnModel().getColumn(0).setPreferredWidth(0);
     }
 
     private void limpiar() {
@@ -144,6 +151,11 @@ public class Caballos extends javax.swing.JDialog {
         jScrollPane3.setViewportView(atxtObservacion);
 
         chbActive.setText("Activo");
+        chbActive.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                chbActiveActionPerformed(evt);
+            }
+        });
 
         javax.swing.GroupLayout jPanel1Layout = new javax.swing.GroupLayout(jPanel1);
         jPanel1.setLayout(jPanel1Layout);
@@ -351,6 +363,15 @@ public class Caballos extends javax.swing.JDialog {
         stateFilter = cmbEstado.getSelectedItem().toString().toLowerCase();
         showCaballos(txtBuscar.getText(), stateFilter);
     }//GEN-LAST:event_cmbEstadoActionPerformed
+
+    private void chbActiveActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_chbActiveActionPerformed
+        if (chbActive.isSelected()) {
+            finalState = "activo";
+        }
+        if (!chbActive.isSelected()) {
+            finalState = "inactivo";
+        }
+    }//GEN-LAST:event_chbActiveActionPerformed
 
     /**
      * @param args the command line arguments

@@ -78,9 +78,17 @@ public class Carreras extends javax.swing.JDialog {
         table.getColumnModel().getColumn(0).setMinWidth(0);
         table.getColumnModel().getColumn(0).setPreferredWidth(0);
 
-        table.getColumnModel().getColumn(0).setMaxWidth(0);
-        table.getColumnModel().getColumn(0).setMinWidth(0);
-        table.getColumnModel().getColumn(0).setPreferredWidth(0);
+        table.getColumnModel().getColumn(4).setMaxWidth(0);
+        table.getColumnModel().getColumn(4).setMinWidth(0);
+        table.getColumnModel().getColumn(4).setPreferredWidth(0);
+
+        table.getColumnModel().getColumn(7).setMaxWidth(0);
+        table.getColumnModel().getColumn(7).setMinWidth(0);
+        table.getColumnModel().getColumn(7).setPreferredWidth(0);
+
+        table.getColumnModel().getColumn(8).setMaxWidth(0);
+        table.getColumnModel().getColumn(8).setMinWidth(0);
+        table.getColumnModel().getColumn(8).setPreferredWidth(0);
     }
 
     private void actualizarFiltro() {
@@ -219,6 +227,11 @@ public class Carreras extends javax.swing.JDialog {
         });
 
         chbActive.setText("Activo");
+        chbActive.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                chbActiveActionPerformed(evt);
+            }
+        });
 
         jLabel7.setText("Caballos:");
 
@@ -425,8 +438,8 @@ public class Carreras extends javax.swing.JDialog {
                 .addComponent(jPanel1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addComponent(jPanel2, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                .addComponent(jScrollPane1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(jScrollPane1)
                 .addContainerGap())
         );
 
@@ -457,16 +470,16 @@ public class Carreras extends javax.swing.JDialog {
     }//GEN-LAST:event_btnSeleccionarCaballosActionPerformed
 
     private void btnSaveActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnSaveActionPerformed
-        SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy");
-        String fecha = sdf.format(dchFecha.getDate());
+        if (validateFields()) {
+            SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy");
+            String fecha = sdf.format(dchFecha.getDate());
 
-        if (txtIdcarreras.getText().length() == 0) {
-            validateFields();
-            save(Integer.parseInt(txtNumero.getText()), txtNombre.getText(), txtLugar.getText(), fecha, txtIdganador.getText(), atxtObservacion.getText(), idCaballosSeleccionados);
-        } else {
-            validateFields();
-            Integer idGanador = (txtIdganador.getText().trim().isEmpty()) ? null : Integer.valueOf(txtIdganador.getText().trim());
-            update(Integer.parseInt(txtNumero.getText()), txtNombre.getText(), txtLugar.getText(), fecha, idGanador, atxtObservacion.getText(), idCaballosSeleccionados);
+            if (txtIdcarreras.getText().length() == 0) {
+                save(Integer.parseInt(txtNumero.getText()), txtNombre.getText(), txtLugar.getText(), fecha, txtIdganador.getText(), atxtObservacion.getText(), idCaballosSeleccionados);
+            } else {
+                Integer idGanador = (txtIdganador.getText().trim().isEmpty()) ? null : Integer.valueOf(txtIdganador.getText().trim());
+                update(Integer.parseInt(txtNumero.getText()), txtNombre.getText(), txtLugar.getText(), fecha, idGanador, atxtObservacion.getText(), idCaballosSeleccionados);
+            }
         }
     }//GEN-LAST:event_btnSaveActionPerformed
 
@@ -550,37 +563,21 @@ public class Carreras extends javax.swing.JDialog {
         System.out.println("cmbFase: " + fase);
     }//GEN-LAST:event_cmbFaseActionPerformed
 
+    private void chbActiveActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_chbActiveActionPerformed
+        if (chbActive.isSelected()) {
+            finalState = "activo";
+        }
+        if (!chbActive.isSelected()) {
+            finalState = "inactivo";
+        }
+    }//GEN-LAST:event_chbActiveActionPerformed
+
     Frame f = JOptionPane.getFrameForComponent(this);
 
     /**
      * @param args the command line arguments
      */
     public static void main(String args[]) {
-        /* Set the Nimbus look and feel */
-        //<editor-fold defaultstate="collapsed" desc=" Look and feel setting code (optional) ">
-        /* If Nimbus (introduced in Java SE 6) is not available, stay with the default look and feel.
-         * For details see http://download.oracle.com/javase/tutorial/uiswing/lookandfeel/plaf.html 
-         */
-        try {
-            for (javax.swing.UIManager.LookAndFeelInfo info : javax.swing.UIManager.getInstalledLookAndFeels()) {
-                if ("Nimbus".equals(info.getName())) {
-                    javax.swing.UIManager.setLookAndFeel(info.getClassName());
-                    break;
-                }
-            }
-        } catch (ClassNotFoundException ex) {
-            java.util.logging.Logger.getLogger(Carreras.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
-        } catch (InstantiationException ex) {
-            java.util.logging.Logger.getLogger(Carreras.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
-        } catch (IllegalAccessException ex) {
-            java.util.logging.Logger.getLogger(Carreras.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
-        } catch (javax.swing.UnsupportedLookAndFeelException ex) {
-            java.util.logging.Logger.getLogger(Carreras.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
-        }
-        //</editor-fold>
-        //</editor-fold>
-        //</editor-fold>
-        //</editor-fold>
 
         /* Create and display the dialog */
         java.awt.EventQueue.invokeLater(new Runnable() {
@@ -597,7 +594,12 @@ public class Carreras extends javax.swing.JDialog {
         });
     }
 
-    private void validateFields() {
+    private boolean validateFields() {
+        if (atxtCaballos.getText().length() == 0) {
+            JOptionPane.showMessageDialog(null, "Cargue al menos un caballo", "Advertencia!", JOptionPane.WARNING_MESSAGE);
+            return false;
+        }
+
         if (txtNombre.getText().length() == 0) {
             txtNombre.setText("Sin datos");
         }
@@ -611,6 +613,7 @@ public class Carreras extends javax.swing.JDialog {
         if (atxtObservacion.getText().length() == 0) {
             atxtObservacion.setText("Sin datos");
         }
+        return true;
     }
 
     // Variables declaration - do not modify//GEN-BEGIN:variables

@@ -3,6 +3,7 @@ package Config;
 import Controller.Fecha_Controller;
 import Controller.State_Controller;
 import Model.Vencidos_Model;
+import Services.SQLiteBackupManager;
 import View.Principal;
 import com.formdev.flatlaf.FlatLightLaf;
 import java.util.List;
@@ -30,8 +31,12 @@ public class Run {
             Logger.getLogger(Run.class.getName()).log(Level.SEVERE, null, ex);
         }
 
-        // 🔹 Crear la base de datos antes de cualquier consulta
+        // Crear la base de datos antes de cualquier consulta
         DataSource.createDatabase();
+
+        // Crear un backup diario y limpiar si excede el límite
+        SQLiteBackupManager.crearBackup();
+        SQLiteBackupManager.limpiarBackups();
 
         // Cargar el modelo de estados
         model = State_Controller.states();

@@ -6,6 +6,7 @@ import java.awt.Image;
 import java.io.File;
 import javax.swing.ImageIcon;
 import javax.swing.JOptionPane;
+import javax.swing.JTable;
 import javax.swing.table.DefaultTableModel;
 
 /**
@@ -41,9 +42,28 @@ public class Principal extends javax.swing.JFrame {
             DefaultTableModel model;
             model = Carreras_controller.showCarrerasInPrincipal(search, statusFilter);
             tblPrincipal.setModel(model);
+            ocultar_columnas(tblPrincipal);
         } catch (Exception e) {
             JOptionPane.showMessageDialog(null, e);
         }
+    }
+
+    private void ocultar_columnas(JTable table) {
+        table.getColumnModel().getColumn(0).setMaxWidth(0);
+        table.getColumnModel().getColumn(0).setMinWidth(0);
+        table.getColumnModel().getColumn(0).setPreferredWidth(0);
+
+        table.getColumnModel().getColumn(4).setMaxWidth(0);
+        table.getColumnModel().getColumn(4).setMinWidth(0);
+        table.getColumnModel().getColumn(4).setPreferredWidth(0);
+
+        table.getColumnModel().getColumn(7).setMaxWidth(0);
+        table.getColumnModel().getColumn(7).setMinWidth(0);
+        table.getColumnModel().getColumn(7).setPreferredWidth(0);
+
+        table.getColumnModel().getColumn(8).setMaxWidth(0);
+        table.getColumnModel().getColumn(8).setMinWidth(0);
+        table.getColumnModel().getColumn(8).setPreferredWidth(0);
     }
 
     private void notificacion() {
@@ -216,6 +236,11 @@ public class Principal extends javax.swing.JFrame {
         jMenuBar1.add(mnuCaballos);
 
         jMenu1.setText("Ajustes");
+        jMenu1.addMouseListener(new java.awt.event.MouseAdapter() {
+            public void mouseClicked(java.awt.event.MouseEvent evt) {
+                jMenu1MouseClicked(evt);
+            }
+        });
         jMenuBar1.add(jMenu1);
 
         setJMenuBar(jMenuBar1);
@@ -309,6 +334,14 @@ public class Principal extends javax.swing.JFrame {
         this.setLocationRelativeTo(null);
         this.setExtendedState(MAXIMIZED_BOTH);
     }//GEN-LAST:event_pnlNotificacionesMouseClicked
+
+    private void jMenu1MouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_jMenu1MouseClicked
+        Configuraciones dialog = new Configuraciones(f, true);
+        dialog.setVisible(true);
+
+        this.setLocationRelativeTo(null);
+        this.setExtendedState(MAXIMIZED_BOTH);
+    }//GEN-LAST:event_jMenu1MouseClicked
 
     Frame f = JOptionPane.getFrameForComponent(this);
 

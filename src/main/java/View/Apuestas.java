@@ -18,6 +18,7 @@ import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.swing.JOptionPane;
+import javax.swing.JTable;
 import javax.swing.table.DefaultTableModel;
 
 /**
@@ -60,7 +61,7 @@ public class Apuestas extends javax.swing.JDialog {
             DefaultTableModel model;
             model = apuestas_controller.showApuestas(search, stateFilter, startDate, endDate);
             tblApuestas.setModel(model);
-//            ocultar_columnas(tblApuestas);
+            ocultar_columnas(tblApuestas);
             for (int i = 0; i < tblApuestas.getColumnCount(); i++) {
                 tblApuestas.getColumnModel().getColumn(i).setCellRenderer(new ApuestasRenderer());
             }
@@ -69,15 +70,16 @@ public class Apuestas extends javax.swing.JDialog {
         }
     }
 
-//    private void ocultar_columnas(JTable table) {
-//        table.getColumnModel().getColumn(0).setMaxWidth(0);
-//        table.getColumnModel().getColumn(0).setMinWidth(0);
-//        table.getColumnModel().getColumn(0).setPreferredWidth(0);
-//
-//        table.getColumnModel().getColumn(0).setMaxWidth(0);
-//        table.getColumnModel().getColumn(0).setMinWidth(0);
-//        table.getColumnModel().getColumn(0).setPreferredWidth(0);
-//    }
+    private void ocultar_columnas(JTable table) {
+        table.getColumnModel().getColumn(0).setMaxWidth(0);
+        table.getColumnModel().getColumn(0).setMinWidth(0);
+        table.getColumnModel().getColumn(0).setPreferredWidth(0);
+
+        table.getColumnModel().getColumn(9).setMaxWidth(0);
+        table.getColumnModel().getColumn(9).setMinWidth(0);
+        table.getColumnModel().getColumn(9).setPreferredWidth(0);
+    }
+
     private void limpiar() {
         txtIdapuestas.setText("");
         txtNombre.setText("");
@@ -327,6 +329,11 @@ public class Apuestas extends javax.swing.JDialog {
         jLabel7.setText("Observación:");
 
         chbActive.setText("Activo");
+        chbActive.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                chbActiveActionPerformed(evt);
+            }
+        });
 
         jLabel8.setText("Caballos:");
 
@@ -459,8 +466,8 @@ public class Apuestas extends javax.swing.JDialog {
                 .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                     .addGroup(jPanel1Layout.createSequentialGroup()
                         .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                            .addComponent(cmbApostadores, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                             .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                                .addComponent(cmbApostadores, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                                 .addComponent(jLabel5)
                                 .addComponent(jLabel7))
                             .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
@@ -641,9 +648,10 @@ public class Apuestas extends javax.swing.JDialog {
         String fechaLimitefinal = fechalimite.format(formatoMySQL);
         System.out.println("fechalimite: " + fechaLimitefinal);
 
-        if (txtIdapuestas.getText().length() == 0) {
-            validateFields();
-            save(Integer.parseInt(txtNumero.getText()), txtNombre.getText(), Integer.parseInt(txtMonto.getText().replace(".", "")), Integer.parseInt(txtAbonado.getText().replace(".", "")), fechaFinal, fechaLimitefinal, atxtObservacion.getText(), Integer.parseInt(txtIdcarreras.getText()), Integer.parseInt(txtIdcaballos.getText()), Integer.parseInt(txtIdapostadores.getText()));
+        if (validateFields()) {
+            if (txtIdapuestas.getText().length() == 0) {
+                save(Integer.parseInt(txtNumero.getText()), txtNombre.getText(), Integer.parseInt(txtMonto.getText().replace(".", "")), Integer.parseInt(txtAbonado.getText().replace(".", "")), fechaFinal, fechaLimitefinal, atxtObservacion.getText(), Integer.parseInt(txtIdcarreras.getText()), Integer.parseInt(txtIdcaballos.getText()), Integer.parseInt(txtIdapostadores.getText()));
+            }
         } else {
             update(Integer.parseInt(txtIdapuestas.getText()), txtNombre.getText(), Integer.parseInt(txtMonto.getText().replace(".", "")), Integer.parseInt(txtAbonado.getText().replace(".", "")), fechaFinal, fechaLimitefinal, atxtObservacion.getText(), Integer.parseInt(txtIdcarreras.getText()), Integer.parseInt(txtIdcaballos.getText()), Integer.parseInt(txtIdapostadores.getText()));
         }
@@ -716,7 +724,7 @@ public class Apuestas extends javax.swing.JDialog {
             JOptionPane.showMessageDialog(null, "Ingrese solo números", "Advertencia!", JOptionPane.WARNING_MESSAGE);
         }
 
-        int numerocaracteres = 11;
+        int numerocaracteres = 10;
         if (txtMonto.getText().length() > numerocaracteres) {
             evt.consume();
             JOptionPane.showMessageDialog(null, "No ingrese tantos números", "Advertencia!", JOptionPane.WARNING_MESSAGE);
@@ -745,7 +753,7 @@ public class Apuestas extends javax.swing.JDialog {
             JOptionPane.showMessageDialog(null, "Ingrese solo números", "Advertencia!", JOptionPane.WARNING_MESSAGE);
         }
 
-        int numerocaracteres = 11;
+        int numerocaracteres = 10;
         if (txtAbonado.getText().length() > numerocaracteres) {
             evt.consume();
             JOptionPane.showMessageDialog(null, "No ingrese tantos números", "Advertencia!", JOptionPane.WARNING_MESSAGE);
@@ -806,6 +814,15 @@ public class Apuestas extends javax.swing.JDialog {
         }
     }//GEN-LAST:event_atxtObservacionKeyPressed
 
+    private void chbActiveActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_chbActiveActionPerformed
+        if (chbActive.isSelected()) {
+            finalState = "activo";
+        }
+        if (!chbActive.isSelected()) {
+            finalState = "inactivo";
+        }
+    }//GEN-LAST:event_chbActiveActionPerformed
+
     /**
      * @param args the command line arguments
      */
@@ -848,7 +865,22 @@ public class Apuestas extends javax.swing.JDialog {
         });
     }
 
-    private void validateFields() {
+    private boolean validateFields() {
+        if (cmbCarreras.getItemCount() == 0) {
+            JOptionPane.showMessageDialog(null, "Cargue una carrera antes de cargar las apuestas", "Advertencia!", JOptionPane.WARNING_MESSAGE);
+            return false;
+        }
+
+        if (cmbCaballos.getItemCount() == 0) {
+            JOptionPane.showMessageDialog(null, "Cargue un caballo antes de cargar las apuestas", "Advertencia!", JOptionPane.WARNING_MESSAGE);
+            return false;
+        }
+
+        if (cmbApostadores.getItemCount() == 0) {
+            JOptionPane.showMessageDialog(null, "Cargue un apostador antes de cargar las apuestas", "Advertencia!", JOptionPane.WARNING_MESSAGE);
+            return false;
+        }
+
         if (txtNombre.getText().length() == 0) {
             txtNombre.setText("Sin datos");
         }
@@ -864,6 +896,7 @@ public class Apuestas extends javax.swing.JDialog {
         if (atxtObservacion.getText().length() == 0) {
             atxtObservacion.setText("Sin datos");
         }
+        return true;
     }
 
     // Variables declaration - do not modify//GEN-BEGIN:variables

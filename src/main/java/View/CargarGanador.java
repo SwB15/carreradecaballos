@@ -5,6 +5,7 @@ import java.awt.Color;
 import java.awt.event.ActionEvent;
 import java.util.HashMap;
 import java.util.Map;
+import javax.swing.JOptionPane;
 
 /**
  *
@@ -160,9 +161,13 @@ public class CargarGanador extends javax.swing.JDialog {
     }// </editor-fold>//GEN-END:initComponents
 
     private void btnSaveActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnSaveActionPerformed
-        Carreras.txtIdganador.setText(txtIdcaballos.getText());
-        Carreras.txtGanador.setText(cmbCaballos.getSelectedItem().toString());
-        this.dispose();
+        if (txtCarreras.getText().length() == 0) {
+            JOptionPane.showMessageDialog(null, "Necesitas seleccionar o cargar una carrera primeramente", "Advertencia!", JOptionPane.WARNING_MESSAGE);
+        } else {
+            Carreras.txtIdganador.setText(txtIdcaballos.getText());
+            Carreras.txtGanador.setText(cmbCaballos.getSelectedItem().toString());
+            this.dispose();
+        }
     }//GEN-LAST:event_btnSaveActionPerformed
 
     private void btnCancelActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnCancelActionPerformed

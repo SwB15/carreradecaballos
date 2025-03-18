@@ -13,10 +13,17 @@ import java.sql.Statement;
 public class DataSource {
 
     private static final String BD = "carreradecaballos.db";
-    private static final String URL = "jdbc:sqlite:" + new File(BD).getAbsolutePath();
+    private static final String DIR = System.getProperty("user.home") + File.separator + "AppData" + File.separator + "Local" + File.separator + "CarreraDeCaballos";
+    private static final String URL = "jdbc:sqlite:" + DIR + File.separator + BD;
 
     static {
         try {
+            // Crear la carpeta si no existe
+            File dir = new File(DIR);
+            if (!dir.exists()) {
+                dir.mkdirs();
+            }
+
             Class.forName("org.sqlite.JDBC"); // Cargar el driver de SQLite
         } catch (ClassNotFoundException ex) {
             throw new ExceptionInInitializerError(ex);
@@ -37,7 +44,6 @@ public class DataSource {
         }
     }
 
-    // Método para crear la base de datos y las tablas si no existen
     public static void createDatabase() {
         String sql = """
     CREATE TABLE IF NOT EXISTS estados (
@@ -110,7 +116,7 @@ public class DataSource {
         try (Connection conn = getConnection(); Statement stmt = conn.createStatement()) {
             stmt.executeUpdate(sql);
             stmt.executeUpdate(insertEstados);
-            System.out.println("Base de datos y tablas creadas exitosamente.");
+            System.out.println("Base de datos y tablas creadas exitosamente en: " + URL);
         } catch (SQLException e) {
             System.out.println("Error al crear la base de datos: " + e.getMessage());
         }
