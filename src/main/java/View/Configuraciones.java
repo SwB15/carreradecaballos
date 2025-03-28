@@ -1,13 +1,11 @@
 package View;
 
-import Config.TruncateTables;
 import Services.SQLiteBackupManager;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
 import java.text.SimpleDateFormat;
-import java.util.Arrays;
 import java.util.Date;
 import javax.swing.JOptionPane;
 import javax.swing.table.DefaultTableModel;
@@ -21,17 +19,46 @@ public class Configuraciones extends javax.swing.JDialog {
     public Configuraciones(java.awt.Frame parent, boolean modal) {
         super(parent, modal);
         initComponents();
+        this.setLocationRelativeTo(null);
+        cargarBackupsEnTabla();
     }
 
     public void cargarBackupsEnTabla() {
-        DefaultTableModel model = (DefaultTableModel) tblBackups.getModel();
-        model.setRowCount(0); // Limpiar tabla
+        System.out.println("BACKUP_DIR en tiempo de ejecución: " + SQLiteBackupManager.BACKUP_DIR);
 
         File backupDir = new File(SQLiteBackupManager.BACKUP_DIR);
-        File[] backups = backupDir.listFiles((dir, name) -> name.startsWith("backup_") && name.endsWith(".db"));
 
-        if (backups != null) {
-            Arrays.sort(backups, (a, b) -> Long.compare(b.lastModified(), a.lastModified())); // Más nuevos arriba
+        // 1) Imprime info de la carpeta
+        System.out.println("backupDir.getAbsolutePath() = " + backupDir.getAbsolutePath());
+        System.out.println("backupDir.exists() = " + backupDir.exists());
+        System.out.println("backupDir.isDirectory() = " + backupDir.isDirectory());
+
+        // 2) Imprime todos los archivos (sin filtrar)
+        File[] allFiles = backupDir.listFiles();
+        if (allFiles == null) {
+            System.out.println("allFiles es null -> La carpeta no existe o no se pudo leer.");
+        } else {
+            System.out.println("Cantidad de archivos sin filtrar: " + allFiles.length);
+            for (File f : allFiles) {
+                System.out.println(" - Archivo encontrado (sin filtrar): " + f.getName());
+            }
+        }
+
+        // 3) Aplica el filtro backup_*.db
+        File[] backups = backupDir.listFiles((dir, name) -> name.startsWith("backup_") && name.endsWith(".db"));
+        if (backups == null) {
+            System.out.println("backups es null -> Error al leer con el filtro o la carpeta no existe.");
+        } else {
+            System.out.println("Cantidad de backups filtrados: " + backups.length);
+            for (File backup : backups) {
+                System.out.println(" - Archivo filtrado: " + backup.getName());
+            }
+        }
+
+        // 4) Finalmente, si backups no es null, carga en la tabla
+        if (backups != null && backups.length > 0) {
+            DefaultTableModel model = (DefaultTableModel) tblBackups.getModel();
+            model.setRowCount(0); // Limpiar tabla
             SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
 
             for (File backup : backups) {
@@ -42,15 +69,15 @@ public class Configuraciones extends javax.swing.JDialog {
                 });
             }
         }
+
+        tblBackups.revalidate();
+        tblBackups.repaint();
     }
 
     @SuppressWarnings("unchecked")
     // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
     private void initComponents() {
 
-        jPanel1 = new javax.swing.JPanel();
-        jLabel1 = new javax.swing.JLabel();
-        jButton1 = new javax.swing.JButton();
         jPanel2 = new javax.swing.JPanel();
         jLabel2 = new javax.swing.JLabel();
         txtRestaurar = new javax.swing.JTextField();
@@ -61,51 +88,19 @@ public class Configuraciones extends javax.swing.JDialog {
 
         setDefaultCloseOperation(javax.swing.WindowConstants.DISPOSE_ON_CLOSE);
 
-        jPanel1.setBorder(javax.swing.BorderFactory.createBevelBorder(javax.swing.border.BevelBorder.RAISED));
-
-        jLabel1.setText("Eliminar BD:");
-
-        jButton1.setText("Eliminar");
-        jButton1.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                jButton1ActionPerformed(evt);
-            }
-        });
-
-        javax.swing.GroupLayout jPanel1Layout = new javax.swing.GroupLayout(jPanel1);
-        jPanel1.setLayout(jPanel1Layout);
-        jPanel1Layout.setHorizontalGroup(
-            jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(jPanel1Layout.createSequentialGroup()
-                .addContainerGap()
-                .addComponent(jLabel1)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(jButton1)
-                .addContainerGap(585, Short.MAX_VALUE))
-        );
-        jPanel1Layout.setVerticalGroup(
-            jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(jPanel1Layout.createSequentialGroup()
-                .addContainerGap()
-                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(jLabel1)
-                    .addComponent(jButton1))
-                .addContainerGap(36, Short.MAX_VALUE))
-        );
-
         jPanel2.setBorder(javax.swing.BorderFactory.createBevelBorder(javax.swing.border.BevelBorder.RAISED));
 
         jLabel2.setText("Restaurar:");
 
         tblBackups.setModel(new javax.swing.table.DefaultTableModel(
             new Object [][] {
-                {},
-                {},
-                {},
-                {}
+                {null, null, null},
+                {null, null, null},
+                {null, null, null},
+                {null, null, null}
             },
             new String [] {
-
+                "Nombre", "Fecha", "Tamaño"
             }
         ));
         tblBackups.addMouseListener(new java.awt.event.MouseAdapter() {
@@ -136,6 +131,7 @@ public class Configuraciones extends javax.swing.JDialog {
             .addGroup(jPanel2Layout.createSequentialGroup()
                 .addContainerGap()
                 .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addComponent(jScrollPane1)
                     .addGroup(jPanel2Layout.createSequentialGroup()
                         .addComponent(jLabel2)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
@@ -143,9 +139,9 @@ public class Configuraciones extends javax.swing.JDialog {
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                         .addComponent(BtnCargar)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(btnDelete))
-                    .addComponent(jScrollPane1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                        .addComponent(btnDelete)
+                        .addGap(0, 0, Short.MAX_VALUE)))
+                .addContainerGap())
         );
         jPanel2Layout.setVerticalGroup(
             jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -167,30 +163,19 @@ public class Configuraciones extends javax.swing.JDialog {
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(layout.createSequentialGroup()
                 .addContainerGap()
-                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addComponent(jPanel1, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                    .addComponent(jPanel2, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
-                .addContainerGap())
+                .addComponent(jPanel2, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
         );
         layout.setVerticalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(layout.createSequentialGroup()
+            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
                 .addContainerGap()
-                .addComponent(jPanel1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addComponent(jPanel2, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                 .addContainerGap())
         );
 
         pack();
     }// </editor-fold>//GEN-END:initComponents
-
-    private void jButton1ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton1ActionPerformed
-        int respuesta = JOptionPane.showConfirmDialog(this, "Todos los registros serán eliminados permanentemente", "Eliminar Base de Datos?", JOptionPane.YES_NO_OPTION);
-        if (respuesta == JOptionPane.YES_OPTION) {
-            TruncateTables.deleteAllData();
-        }
-    }//GEN-LAST:event_jButton1ActionPerformed
 
     private void tblBackupsMouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_tblBackupsMouseClicked
         int fila = tblBackups.getSelectedRow();
@@ -207,10 +192,15 @@ public class Configuraciones extends javax.swing.JDialog {
             return;
         }
 
-        int confirm = JOptionPane.showConfirmDialog(this,
+        String[] opciones = {"Sí", "No"};
+        int confirm = JOptionPane.showOptionDialog(this,
                 "¿Estás seguro que quieres restaurar el backup?\nSe sobrescribirá la base de datos actual.",
                 "Confirmar restauración",
-                JOptionPane.YES_NO_OPTION);
+                JOptionPane.YES_NO_OPTION,
+                JOptionPane.WARNING_MESSAGE,
+                null,
+                opciones,
+                opciones[1]); // Por defecto "No"
 
         if (confirm == JOptionPane.YES_OPTION) {
             try {
@@ -226,6 +216,7 @@ public class Configuraciones extends javax.swing.JDialog {
                 JOptionPane.showMessageDialog(this, "Error al restaurar el backup.");
             }
         }
+
     }//GEN-LAST:event_BtnCargarActionPerformed
 
     private void btnDeleteActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnDeleteActionPerformed
@@ -235,10 +226,15 @@ public class Configuraciones extends javax.swing.JDialog {
             return;
         }
 
-        int confirm = JOptionPane.showConfirmDialog(this,
+        String[] opciones = {"Sí", "No"};
+        int confirm = JOptionPane.showOptionDialog(this,
                 "¿Estás seguro que quieres eliminar el backup seleccionado?",
                 "Confirmar eliminación",
-                JOptionPane.YES_NO_OPTION);
+                JOptionPane.YES_NO_OPTION,
+                JOptionPane.WARNING_MESSAGE,
+                null,
+                opciones,
+                opciones[1]);  // Por defecto "No"
 
         if (confirm == JOptionPane.YES_OPTION) {
             File backupFile = new File(SQLiteBackupManager.BACKUP_DIR + File.separator + backupSeleccionado);
@@ -249,6 +245,7 @@ public class Configuraciones extends javax.swing.JDialog {
                 JOptionPane.showMessageDialog(this, "No se pudo eliminar el backup.");
             }
         }
+
     }//GEN-LAST:event_btnDeleteActionPerformed
 
     /**
@@ -296,10 +293,7 @@ public class Configuraciones extends javax.swing.JDialog {
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JButton BtnCargar;
     private javax.swing.JButton btnDelete;
-    private javax.swing.JButton jButton1;
-    private javax.swing.JLabel jLabel1;
     private javax.swing.JLabel jLabel2;
-    private javax.swing.JPanel jPanel1;
     private javax.swing.JPanel jPanel2;
     private javax.swing.JScrollPane jScrollPane1;
     private javax.swing.JTable tblBackups;

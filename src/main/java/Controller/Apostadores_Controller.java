@@ -32,11 +32,17 @@ public class Apostadores_Controller {
     public DefaultTableModel showApostadores(String search, String stateFilter) {
         return services.showApostadores(search, stateFilter);
     }
-    
+
     public DefaultTableModel showHistorial(int id) {
         return services.showHistorial(id);
     }
-    
+
+    //Devuelve si hay o no apuestas realizadas al usuario
+    public boolean tieneHistorial(int idApostador) {
+        DefaultTableModel modelo = showHistorial(idApostador);
+        return modelo.getRowCount() > 0;
+    }
+
     public int getMaxCodigo() {
         return services.getMaxCodigo();
     }

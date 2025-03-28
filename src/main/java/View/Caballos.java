@@ -42,7 +42,7 @@ public class Caballos extends javax.swing.JDialog {
             JOptionPane.showMessageDialog(null, e);
         }
     }
-    
+
     private void ocultar_columnas(JTable table) {
         table.getColumnModel().getColumn(0).setMaxWidth(0);
         table.getColumnModel().getColumn(0).setMinWidth(0);
@@ -478,7 +478,18 @@ public class Caballos extends javax.swing.JDialog {
             if (txtIdcaballos.getText().length() == 0) {
                 JOptionPane.showMessageDialog(null, "Seleccione un caballo para desactivar.", "Advertencia!", JOptionPane.WARNING_MESSAGE);
             } else {
-                int respuesta = JOptionPane.showConfirmDialog(this, "El caballo será desactivado", "Desactivar?", JOptionPane.YES_NO_OPTION);
+                String[] opciones = {"Sí", "No"};
+                int respuesta = JOptionPane.showOptionDialog(
+                        this,
+                        "El caballo será desactivado",
+                        "Desactivar?",
+                        JOptionPane.YES_NO_OPTION,
+                        JOptionPane.QUESTION_MESSAGE,
+                        null,
+                        opciones,
+                        opciones[0]
+                );
+
                 if (respuesta == JOptionPane.YES_OPTION) {
                     idestado = State_Controller.getEstadoId(finalState, Run.model);
                 }
@@ -487,7 +498,18 @@ public class Caballos extends javax.swing.JDialog {
             if (txtIdcaballos.getText().length() == 0) {
                 JOptionPane.showMessageDialog(null, "Seleccione un caballo para activar.", "Advertencia!", JOptionPane.WARNING_MESSAGE);
             } else {
-                int respuesta = JOptionPane.showConfirmDialog(this, "El caballo será activado", "Activar?", JOptionPane.YES_NO_OPTION);
+                String[] opciones = {"Sí", "No"};
+                int respuesta = JOptionPane.showOptionDialog(
+                        this,
+                        "El caballo será activado",
+                        "Activar?",
+                        JOptionPane.YES_NO_OPTION,
+                        JOptionPane.QUESTION_MESSAGE,
+                        null,
+                        opciones,
+                        opciones[0]
+                );
+
                 if (respuesta == JOptionPane.YES_OPTION) {
                     idestado = State_Controller.getEstadoId(finalState, Run.model);
                 }
@@ -495,13 +517,13 @@ public class Caballos extends javax.swing.JDialog {
         } else {
             idestado = State_Controller.getEstadoId(initialState, Run.model);
         }
-        
+
         controller.updateCaballos(id, caballos, jinete, observacion, idestado);
 
-            JOptionPane.showMessageDialog(null, "Caballo actualizado exitosamente!", "Hecho!", JOptionPane.INFORMATION_MESSAGE);
-            limpiar();
-            txtNumero.setText(String.valueOf(controller.getMaxCodigo()));
-            txtCaballos.requestFocus();
-            showCaballos("", stateFilter);
+        JOptionPane.showMessageDialog(null, "Caballo actualizado exitosamente!", "Hecho!", JOptionPane.INFORMATION_MESSAGE);
+        limpiar();
+        txtNumero.setText(String.valueOf(controller.getMaxCodigo()));
+        txtCaballos.requestFocus();
+        showCaballos("", stateFilter);
     }
 }

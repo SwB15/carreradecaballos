@@ -17,4 +17,8 @@ public class Detallecarreras_Services {
     public boolean updateDetallecarreras(Detallecarreras_Model model) {
         return Detallecarreras_repository.update(model);
     }
+    
+    public boolean deleteDetallecarreras(Detallecarreras_Model model) {
+        return Detallecarreras_repository.delete(model);
+    }
 }

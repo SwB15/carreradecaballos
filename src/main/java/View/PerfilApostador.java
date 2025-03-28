@@ -7,6 +7,7 @@ import java.awt.Color;
 import java.awt.Component;
 import java.awt.Container;
 import java.awt.Dimension;
+import java.awt.HeadlessException;
 import java.awt.Image;
 import java.awt.Toolkit;
 import java.util.logging.ConsoleHandler;
@@ -46,21 +47,35 @@ public class PerfilApostador extends javax.swing.JDialog {
         txtCedula.setBackground(Color.white);
         txtNombre.setEditable(false);
         txtNombre.setBackground(Color.white);
-        showHistorial(idApostador);
+
+        // Si no hay historial, mostrar mensaje y cerrar el JDialog
+        if (!showHistorial(idApostador)) {
+            JOptionPane.showMessageDialog(parent, "El apostador no tiene historial de apuestas.", "Información", JOptionPane.INFORMATION_MESSAGE);
+            this.dispose();
+        }
 //        btnImprimir.setEnabled(false);
     }
 
-    private void showHistorial(int id) {
+    private boolean showHistorial(int id) {
         try {
-            DefaultTableModel model;
-            model = controller.showHistorial(id);
+            DefaultTableModel model = controller.showHistorial(id);
             tblPerfil.setModel(model);
+
+            // Si la tabla está vacía, retornar false
+            if (tblPerfil.getRowCount() == 0) {
+                return false;
+            }
+
+            // Si hay datos, llenar los campos
             txtNumero.setText(String.valueOf(tblPerfil.getValueAt(0, 1)));
             txtNombre.setText(String.valueOf(tblPerfil.getValueAt(0, 2)));
             txtCedula.setText(String.valueOf(tblPerfil.getValueAt(0, 3)));
-//            ocultar_columnas(tblPerfil);
+
+            return true;
+
         } catch (Exception e) {
-            JOptionPane.showMessageDialog(null, e);
+            JOptionPane.showMessageDialog(this, "Error al obtener el historial: " + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+            return false;
         }
     }
 

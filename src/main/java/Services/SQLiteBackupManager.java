@@ -14,7 +14,7 @@ import java.util.Date;
  */
 public class SQLiteBackupManager {
 
-    private static final String BASE_DIR = System.getProperty("user.home") + File.separator + "AppData" + File.separator + "Local" + File.separator + "CarreraDeCaballos";
+    public static final String BASE_DIR = System.getProperty("user.home") + File.separator + "AppData" + File.separator + "Local" + File.separator + "CarreraDeCaballos";
     public static final String DB_PATH = BASE_DIR + File.separator + "carreradecaballos.db"; // Ruta de la BD
     public static final String BACKUP_DIR = BASE_DIR + File.separator + "backups"; // Carpeta de backups
     private static final int MAX_BACKUPS = 7;

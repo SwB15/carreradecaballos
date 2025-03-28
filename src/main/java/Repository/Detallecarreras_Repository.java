@@ -8,8 +8,8 @@ import java.sql.SQLException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-public class Detallecarreras_Repository{
-    
+public class Detallecarreras_Repository {
+
     String sql = "";
     PreparedStatement pst = null;
 
@@ -30,7 +30,7 @@ public class Detallecarreras_Repository{
     }
 
     public boolean update(Detallecarreras_Model model) {
-        sql = "UPDATE Detallecarreras SET fk_carreras = ?, fk_caballos = ? WHERE iddetallecarreras = ?";
+        sql = "UPDATE detallecarreras SET fk_carreras = ?, fk_caballos = ? WHERE iddetallecarreras = ?";
         try (Connection cn = DataSource.getConnection()) {
             pst = cn.prepareStatement(sql);
             pst.setInt(1, model.getFk_carreras());
@@ -44,5 +44,19 @@ public class Detallecarreras_Repository{
             return false;
         }
     }
-//******************************** End of Insert, Update, Disable ********************************  
+
+    public boolean delete(Detallecarreras_Model model) {
+        sql = "DELETE FROM detallecarreras WHERE fk_carreras = ?";
+        try (Connection cn = DataSource.getConnection()) {
+            pst = cn.prepareStatement(sql);
+            pst.setInt(1, model.getFk_carreras());
+
+            int N = pst.executeUpdate();
+            return N != 0;
+        } catch (SQLException ex) {
+            Logger.getLogger(Detallecarreras_Repository.class.getName()).log(Level.SEVERE, null, ex);
+            return false;
+        }
+    }
+//******************************** End of Insert, Update, Delete ********************************  
 }

@@ -55,7 +55,7 @@ public class Apostadores_Repository {
 
 //********************************Begin of Display Methods********************************
     public DefaultTableModel showApostadores(String search, String stateFilter) {
-        String[] titles = {"Id", "Cedula", "Nombre", "Observacion", "Estado"};
+        String[] titles = {"Id", "Cedula", "Apostadores", "Observacion", "Estado"};
         DefaultTableModel model = new DefaultTableModel(null, titles);
 
         String sSQL = "SELECT a.idapostadores, a.cedula, a.nombre, a.observacion, e.estados "

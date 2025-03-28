@@ -29,7 +29,7 @@ public class Apostadores extends javax.swing.JDialog {
         txtNumero.setEditable(false);
         txtNumero.setText(String.valueOf(controller.getMaxCodigo()));
         txtNumero.transferFocus();
-        txtCedula.requestFocus();
+        txtNombre.requestFocus();
         showApostadores("", stateFilter);
     }
 
@@ -334,8 +334,6 @@ public class Apostadores extends javax.swing.JDialog {
     private void tblApostadoresMouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_tblApostadoresMouseClicked
         int selectedRow = tblApostadores.getSelectedRow();
         if (selectedRow != -1) {
-//            int idApostador = Integer.parseInt(tablaApostadores.getValueAt(selectedRow, 0).toString());
-
             if (evt.getClickCount() == 1) {
                 int select = tblApostadores.rowAtPoint(evt.getPoint());
                 tblApostadores.setRowSelectionInterval(select, select);
@@ -355,7 +353,20 @@ public class Apostadores extends javax.swing.JDialog {
                     initialState = tblApostadores.getValueAt(select, 4).toString();
                 }
             } else if (evt.getClickCount() == 2) {
-                PerfilApostador dialog = new PerfilApostador(f, true, Integer.parseInt(txtNumero.getText()));
+                int idApostador = Integer.parseInt(txtNumero.getText());
+
+                if (!controller.tieneHistorial(idApostador)) {
+                    JOptionPane.showMessageDialog(
+                            this,
+                            "No hay historial del apostador.",
+                            "Información",
+                            JOptionPane.INFORMATION_MESSAGE
+                    );
+                    return;
+                }
+
+                // Si SÍ hay historial, abres el JDialog
+                PerfilApostador dialog = new PerfilApostador(f, true, idApostador);
                 dialog.setVisible(true);
             }
         }
@@ -364,14 +375,14 @@ public class Apostadores extends javax.swing.JDialog {
     private void txtCedulaKeyPressed(java.awt.event.KeyEvent evt) {//GEN-FIRST:event_txtCedulaKeyPressed
         if (evt.getKeyCode() == KeyEvent.VK_ENTER) {
             txtCedula.transferFocus();
-            txtNombre.requestFocus();
+            atxtObservacion.requestFocus();
         }
     }//GEN-LAST:event_txtCedulaKeyPressed
 
     private void txtNombreKeyPressed(java.awt.event.KeyEvent evt) {//GEN-FIRST:event_txtNombreKeyPressed
         if (evt.getKeyCode() == KeyEvent.VK_ENTER) {
             txtNombre.transferFocus();
-            atxtObservacion.requestFocus();
+            txtCedula.requestFocus();
         }
     }//GEN-LAST:event_txtNombreKeyPressed
 
@@ -517,7 +528,18 @@ public class Apostadores extends javax.swing.JDialog {
             if (txtIdapostadores.getText().length() == 0) {
                 JOptionPane.showMessageDialog(null, "Seleccione un apostador para desactivar.", "Advertencia!", JOptionPane.WARNING_MESSAGE);
             } else {
-                int respuesta = JOptionPane.showConfirmDialog(this, "El apostador será desactivado", "Desactivar?", JOptionPane.YES_NO_OPTION);
+                String[] opciones = {"Sí", "No"};
+                int respuesta = JOptionPane.showOptionDialog(
+                        this,
+                        "El apostador será desactivado",
+                        "Desactivar?",
+                        JOptionPane.YES_NO_OPTION,
+                        JOptionPane.QUESTION_MESSAGE,
+                        null,
+                        opciones,
+                        opciones[0]
+                );
+
                 if (respuesta == JOptionPane.YES_OPTION) {
                     idestado = State_Controller.getEstadoId(finalState, Run.model);
                 }
@@ -526,7 +548,18 @@ public class Apostadores extends javax.swing.JDialog {
             if (txtIdapostadores.getText().length() == 0) {
                 JOptionPane.showMessageDialog(null, "Seleccione un apostador para activar.", "Advertencia!", JOptionPane.WARNING_MESSAGE);
             } else {
-                int respuesta = JOptionPane.showConfirmDialog(this, "El apostador será activado", "Activar?", JOptionPane.YES_NO_OPTION);
+                String[] opciones = {"Sí", "No"};
+                int respuesta = JOptionPane.showOptionDialog(
+                        this,
+                        "El apostador será activado",
+                        "Activar?",
+                        JOptionPane.YES_NO_OPTION,
+                        JOptionPane.QUESTION_MESSAGE,
+                        null,
+                        opciones,
+                        opciones[0]
+                );
+
                 if (respuesta == JOptionPane.YES_OPTION) {
                     idestado = State_Controller.getEstadoId(finalState, Run.model);
                 }

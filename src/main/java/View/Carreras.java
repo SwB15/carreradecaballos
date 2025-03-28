@@ -518,6 +518,7 @@ public class Carreras extends javax.swing.JDialog {
         }
 
         idCaballosSeleccionados = Arrays.asList(String.valueOf(tblCarreras.getValueAt(select, 7)).split("\n"));
+        System.out.println("Caballos desde jtable" + idCaballosSeleccionados);
         System.out.println("ids: " + idCaballosSeleccionados);
 
         atxtCaballos.setText(String.valueOf(tblCarreras.getValueAt(select, 8)));
@@ -676,7 +677,18 @@ public class Carreras extends javax.swing.JDialog {
             if (txtIdcarreras.getText().length() == 0) {
                 JOptionPane.showMessageDialog(null, "Seleccione una carrera para desactivar.", "Advertencia!", JOptionPane.WARNING_MESSAGE);
             } else {
-                int respuesta = JOptionPane.showConfirmDialog(this, "La carrera será desactivada", "Desactivar?", JOptionPane.YES_NO_OPTION);
+                String[] opciones = {"Sí", "No"};
+                int respuesta = JOptionPane.showOptionDialog(
+                        this,
+                        "La carrera será desactivada",
+                        "Desactivar?",
+                        JOptionPane.YES_NO_OPTION,
+                        JOptionPane.QUESTION_MESSAGE,
+                        null,
+                        opciones,
+                        opciones[0]
+                );
+
                 if (respuesta == JOptionPane.YES_OPTION) {
                     idestado = State_Controller.getEstadoId(finalState, Run.model);
                 }
@@ -685,7 +697,18 @@ public class Carreras extends javax.swing.JDialog {
             if (txtIdcarreras.getText().length() == 0) {
                 JOptionPane.showMessageDialog(null, "Seleccione una carrera para activar.", "Advertencia!", JOptionPane.WARNING_MESSAGE);
             } else {
-                int respuesta = JOptionPane.showConfirmDialog(this, "La carrera será activada", "Activar?", JOptionPane.YES_NO_OPTION);
+                String[] opciones = {"Sí", "No"};
+                int respuesta = JOptionPane.showOptionDialog(
+                        this,
+                        "La apuesta será activada",
+                        "Activar?",
+                        JOptionPane.YES_NO_OPTION,
+                        JOptionPane.QUESTION_MESSAGE,
+                        null,
+                        opciones,
+                        opciones[0]
+                );
+
                 if (respuesta == JOptionPane.YES_OPTION) {
                     idestado = State_Controller.getEstadoId(finalState, Run.model);
                 }
@@ -695,9 +718,10 @@ public class Carreras extends javax.swing.JDialog {
         }
 
         Carreras_controller.updateCarreras(idCarrera, nombre, lugar, fecha, idganador, observacion, idestado);
-
+        Detallecarreras_controller.deleteDetallecarreras(idCarrera);
         for (int i = 0; i < idCaballos.size(); i++) {
-            System.out.println("idcaballos: " + idCaballos.get(i));
+            System.out.println("idcaballos en for de update: " + idCaballos.get(i));
+
             Detallecarreras_controller.createDetallecarreras(idCarrera, Integer.parseInt(idCaballos.get(i)));
         }
 

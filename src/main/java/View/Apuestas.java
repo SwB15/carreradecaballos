@@ -138,7 +138,6 @@ public class Apuestas extends javax.swing.JDialog {
         CarrerasMap = apuestas_controller.fillCarrerasCombobox();
 
         cmbCarreras.removeAllItems();
-
         // Agregamos los nombres de los Carreras al ComboBox
         for (String nombre : CarrerasMap.values()) {
             cmbCarreras.addItem(nombre);
@@ -651,9 +650,9 @@ public class Apuestas extends javax.swing.JDialog {
         if (validateFields()) {
             if (txtIdapuestas.getText().length() == 0) {
                 save(Integer.parseInt(txtNumero.getText()), txtNombre.getText(), Integer.parseInt(txtMonto.getText().replace(".", "")), Integer.parseInt(txtAbonado.getText().replace(".", "")), fechaFinal, fechaLimitefinal, atxtObservacion.getText(), Integer.parseInt(txtIdcarreras.getText()), Integer.parseInt(txtIdcaballos.getText()), Integer.parseInt(txtIdapostadores.getText()));
+            } else {
+                update(Integer.parseInt(txtIdapuestas.getText()), txtNombre.getText(), Integer.parseInt(txtMonto.getText().replace(".", "")), Integer.parseInt(txtAbonado.getText().replace(".", "")), fechaFinal, fechaLimitefinal, atxtObservacion.getText(), Integer.parseInt(txtIdcarreras.getText()), Integer.parseInt(txtIdcaballos.getText()), Integer.parseInt(txtIdapostadores.getText()));
             }
-        } else {
-            update(Integer.parseInt(txtIdapuestas.getText()), txtNombre.getText(), Integer.parseInt(txtMonto.getText().replace(".", "")), Integer.parseInt(txtAbonado.getText().replace(".", "")), fechaFinal, fechaLimitefinal, atxtObservacion.getText(), Integer.parseInt(txtIdcarreras.getText()), Integer.parseInt(txtIdcaballos.getText()), Integer.parseInt(txtIdapostadores.getText()));
         }
     }//GEN-LAST:event_btnSaveActionPerformed
 
@@ -962,7 +961,11 @@ public class Apuestas extends javax.swing.JDialog {
             if (txtIdapuestas.getText().length() == 0) {
                 JOptionPane.showMessageDialog(null, "Seleccione una apuesta para desactivar.", "Advertencia!", JOptionPane.WARNING_MESSAGE);
             } else {
-                int respuesta = JOptionPane.showConfirmDialog(this, "La apuesta será desactivada", "Desactivar?", JOptionPane.YES_NO_OPTION);
+                String[] opciones = {"Sí", "No"};
+                int respuesta = JOptionPane.showOptionDialog(this, "La apuesta será desactivada", "Desactivar?", JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE,
+                        null, opciones, opciones[0]
+                );
+
                 if (respuesta == JOptionPane.YES_OPTION) {
                     idestado = State_Controller.getEstadoId(finalState, Run.model);
                 }
@@ -971,7 +974,18 @@ public class Apuestas extends javax.swing.JDialog {
             if (txtIdapuestas.getText().length() == 0) {
                 JOptionPane.showMessageDialog(null, "Seleccione una apuesta para activar.", "Advertencia!", JOptionPane.WARNING_MESSAGE);
             } else {
-                int respuesta = JOptionPane.showConfirmDialog(this, "La apuesta será activada", "Activar?", JOptionPane.YES_NO_OPTION);
+                String[] opciones = {"Sí", "No"};
+                int respuesta = JOptionPane.showOptionDialog(
+                        this,
+                        "La apuesta será activada",
+                        "Activar?",
+                        JOptionPane.YES_NO_OPTION,
+                        JOptionPane.QUESTION_MESSAGE,
+                        null,
+                        opciones,
+                        opciones[0]
+                );
+
                 if (respuesta == JOptionPane.YES_OPTION) {
                     idestado = State_Controller.getEstadoId(finalState, Run.model);
                 }

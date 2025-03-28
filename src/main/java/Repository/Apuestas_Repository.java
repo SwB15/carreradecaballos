@@ -211,7 +211,10 @@ public class Apuestas_Repository {
 
     public HashMap<String, String> fillApostadoresCombos() {
         HashMap<String, String> apostadoresMap = new HashMap<>();
-        String sSQL = "SELECT idapostadores, nombre FROM apostadores";
+        String sSQL = "SELECT a.idapostadores, a.nombre "
+                + "FROM apostadores a "
+                + "JOIN estados e ON a.fk_estados = e.idestados "
+                + "WHERE e.estados = 'activo'";
 
         try (Connection cn = DataSource.getConnection(); PreparedStatement pst = cn.prepareStatement(sSQL); ResultSet rs = pst.executeQuery()) {
 
@@ -231,7 +234,10 @@ public class Apuestas_Repository {
 
     public HashMap<String, String> fillCarrerasCombos() {
         HashMap<String, String> carrerasMap = new HashMap<>();
-        String sSQL = "SELECT idcarreras, nombre FROM carreras";
+        String sSQL = "SELECT c.idcarreras, c.nombre "
+                + "FROM carreras c "
+                + "JOIN estados e ON c.fk_estados = e.idestados "
+                + "WHERE e.estados = 'activo'";
 
         try (Connection cn = DataSource.getConnection(); PreparedStatement pst = cn.prepareStatement(sSQL); ResultSet rs = pst.executeQuery()) {
 
@@ -254,7 +260,8 @@ public class Apuestas_Repository {
         String sSQL = "SELECT c.idcaballos, c.caballos "
                 + "FROM caballos c "
                 + "JOIN detallecarreras dc ON c.idcaballos = dc.fk_caballos "
-                + "WHERE dc.fk_carreras = ?";
+                + "JOIN estados e ON c.fk_estados = e.idestados "
+                + "WHERE dc.fk_carreras = ? AND e.estados = 'activo'";
 
         try (Connection cn = DataSource.getConnection(); PreparedStatement pst = cn.prepareStatement(sSQL)) {
 

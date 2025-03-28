@@ -73,10 +73,17 @@ public class CargarCaballos extends javax.swing.JDialog {
 
             // Establecer el nuevo modelo en la tabla
             tblCargarcaballos.setModel(newModel);
+            ocultar_columnas(tblCargarcaballos);
 
         } catch (Exception e) {
             JOptionPane.showMessageDialog(null, e);
         }
+    }
+    
+    private void ocultar_columnas(JTable table) {
+        table.getColumnModel().getColumn(1).setMaxWidth(0);
+        table.getColumnModel().getColumn(1).setMinWidth(0);
+        table.getColumnModel().getColumn(1).setPreferredWidth(0);
     }
 
     private void confirmarSeleccionAntesDeCerrar() {
@@ -93,19 +100,25 @@ public class CargarCaballos extends javax.swing.JDialog {
 
         // Si hay seleccionados, mostrar confirmación
         if (haySeleccionados) {
-            int confirm = JOptionPane.showConfirmDialog(this,
+            String[] opciones = {"Sí", "No"};
+            int confirm = JOptionPane.showOptionDialog(this,
                     "¿Desea utilizar los caballos seleccionados?",
                     "Confirmar selección",
-                    JOptionPane.YES_NO_OPTION);
+                    JOptionPane.YES_NO_OPTION,
+                    JOptionPane.QUESTION_MESSAGE,
+                    null,
+                    opciones,
+                    opciones[0]);
 
             if (confirm == JOptionPane.YES_OPTION) {
                 btnSaveActionPerformed(null);
-            } else if (confirm == JOptionPane.NO_OPTION) {
+            } else if (confirm == JOptionPane.NO_OPTION || confirm == JOptionPane.CLOSED_OPTION) {
                 this.dispose();
             }
         } else {
             this.dispose();
         }
+
     }
 
     @SuppressWarnings("unchecked")
@@ -240,8 +253,11 @@ public class CargarCaballos extends javax.swing.JDialog {
         }
 
         if (!nombresCaballos.isEmpty()) {
+            Carreras.atxtCaballos.setText("");
+            Carreras.idCaballosSeleccionados = new ArrayList<>();
             Carreras.atxtCaballos.setText(String.join("\n", nombresCaballos));
             Carreras.idCaballosSeleccionados.addAll(idsCaballos);
+            System.out.println("caballos "+Carreras.idCaballosSeleccionados);
         } else {
             JOptionPane.showMessageDialog(this, "Debe seleccionar al menos un caballo.", "Advertencia", JOptionPane.WARNING_MESSAGE);
         }
