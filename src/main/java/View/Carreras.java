@@ -456,8 +456,8 @@ public class Carreras extends javax.swing.JDialog {
 
         System.out.println("idcarrera: " + idCarrera);
 
-        CargarGanador dialog = new CargarGanador(f, true, Integer.parseInt(idCarrera), txtNombre.getText());
-        dialog.setVisible(true);
+//        CargarGanador dialog = new CargarGanador(f, true, Integer.parseInt(idCarrera), txtNombre.getText());
+//        dialog.setVisible(true);
 
         this.setLocationRelativeTo(null);
     }//GEN-LAST:event_btnSeleccionarGanadorActionPerformed
@@ -474,8 +474,9 @@ public class Carreras extends javax.swing.JDialog {
             SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy");
             String fecha = sdf.format(dchFecha.getDate());
 
+            Integer idganador = Integer.parseInt(txtIdganador.getText());
             if (txtIdcarreras.getText().length() == 0) {
-                save(Integer.parseInt(txtNumero.getText()), txtNombre.getText(), txtLugar.getText(), fecha, txtIdganador.getText(), atxtObservacion.getText(), idCaballosSeleccionados);
+                save(Integer.parseInt(txtNumero.getText()), txtNombre.getText(), txtLugar.getText(), fecha, idganador, atxtObservacion.getText(), idCaballosSeleccionados);
             } else {
                 Integer idGanador = (txtIdganador.getText().trim().isEmpty()) ? null : Integer.valueOf(txtIdganador.getText().trim());
                 update(Integer.parseInt(txtNumero.getText()), txtNombre.getText(), txtLugar.getText(), fecha, idGanador, atxtObservacion.getText(), idCaballosSeleccionados);
@@ -654,11 +655,11 @@ public class Carreras extends javax.swing.JDialog {
     private javax.swing.JTextField txtNumero;
     // End of variables declaration//GEN-END:variables
 
-    private void save(int idCarrera, String nombre, String lugar, String fecha, String idganador, String observacion, List<String> idCaballos) {
+    private void save(int idCarrera, String nombre, String lugar, String fecha, Integer idganador, String observacion, List<String> idCaballos) {
         finalState = "activo";
         idestado = State_Controller.getEstadoId(finalState, Run.model);
 
-        Carreras_controller.createCarreras(nombre, lugar, fecha, observacion, idestado);
+        Carreras_controller.createCarreras(nombre, lugar, fecha, idganador, observacion, idestado);
 
         for (int i = 0; i < idCaballos.size(); i++) {
             System.out.println("idcaballos: " + idCaballos.get(i));

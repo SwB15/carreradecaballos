@@ -1,12 +1,58 @@
 package View;
 
+import Config.AppPaths;
+import Config.Export_Excel;
 import Config.Run;
 import Controller.Caballos_Controller;
 import Controller.State_Controller;
+import java.awt.BorderLayout;
+import java.awt.Component;
+import java.awt.Container;
+import java.awt.Desktop;
+import java.awt.Dimension;
+import java.awt.Frame;
+import java.awt.Graphics2D;
+import java.awt.Image;
+import java.awt.Toolkit;
 import java.awt.event.KeyEvent;
+import java.awt.image.BufferedImage;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.InputStream;
+import java.net.URL;
+import java.nio.file.Paths;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+import javax.imageio.ImageIO;
+import javax.swing.Box;
+import javax.swing.ImageIcon;
+import javax.swing.JButton;
+import javax.swing.JDialog;
+import javax.swing.JFileChooser;
 import javax.swing.JOptionPane;
+import javax.swing.JPanel;
 import javax.swing.JTable;
+import javax.swing.filechooser.FileNameExtensionFilter;
 import javax.swing.table.DefaultTableModel;
+import net.sf.jasperreports.engine.JRException;
+import net.sf.jasperreports.engine.JasperCompileManager;
+import net.sf.jasperreports.engine.JasperFillManager;
+import net.sf.jasperreports.engine.JasperPrint;
+import net.sf.jasperreports.engine.JasperPrintManager;
+import net.sf.jasperreports.engine.JasperReport;
+import net.sf.jasperreports.engine.data.JRTableModelDataSource;
+import net.sf.jasperreports.swing.JRViewer;
+import net.sf.jasperreports.swing.JRViewerToolbar;
+import net.sf.jasperreports.view.JasperViewer;
 
 /**
  *
@@ -19,6 +65,8 @@ public class Caballos extends javax.swing.JDialog {
     private String initialState = "", finalState = "", stateFilter = "todos";
     private String id = "";
     private int idestado;
+    DateTimeFormatter fmt = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+    String currentdate = LocalDate.now().format(fmt);
 
     public Caballos(java.awt.Frame parent, boolean modal) {
         super(parent, modal);
@@ -61,8 +109,6 @@ public class Caballos extends javax.swing.JDialog {
     private void initComponents() {
 
         buttonGroup1 = new javax.swing.ButtonGroup();
-        jScrollPane1 = new javax.swing.JScrollPane();
-        tblCaballos = new javax.swing.JTable();
         jPanel1 = new javax.swing.JPanel();
         txtNumero = new javax.swing.JTextField();
         jLabel1 = new javax.swing.JLabel();
@@ -78,37 +124,20 @@ public class Caballos extends javax.swing.JDialog {
         chbActive = new javax.swing.JCheckBox();
         jSeparator1 = new javax.swing.JSeparator();
         txtIdcaballos = new javax.swing.JTextField();
+        btnImprimir = new javax.swing.JButton();
+        btnExcel = new javax.swing.JButton();
         jPanel2 = new javax.swing.JPanel();
         txtBuscar = new javax.swing.JTextField();
         jLabel6 = new javax.swing.JLabel();
         cmbEstado = new javax.swing.JComboBox<>();
         jLabel14 = new javax.swing.JLabel();
+        jSeparator2 = new javax.swing.JSeparator();
+        jPanel3 = new javax.swing.JPanel();
+        jScrollPane1 = new javax.swing.JScrollPane();
+        tblCaballos = new javax.swing.JTable();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.DISPOSE_ON_CLOSE);
         setTitle("Caballos");
-
-        tblCaballos = new javax.swing.JTable(){
-            public boolean isCellEditable(int rowIndex, int colIndex) {
-                return false;
-            }
-        };
-        tblCaballos.setModel(new javax.swing.table.DefaultTableModel(
-            new Object [][] {
-                {},
-                {},
-                {},
-                {}
-            },
-            new String [] {
-
-            }
-        ));
-        tblCaballos.addMouseListener(new java.awt.event.MouseAdapter() {
-            public void mouseClicked(java.awt.event.MouseEvent evt) {
-                tblCaballosMouseClicked(evt);
-            }
-        });
-        jScrollPane1.setViewportView(tblCaballos);
 
         jPanel1.setBorder(javax.swing.BorderFactory.createBevelBorder(javax.swing.border.BevelBorder.RAISED));
 
@@ -130,6 +159,11 @@ public class Caballos extends javax.swing.JDialog {
         });
 
         btnCancel.setText("Cancelar");
+        btnCancel.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                btnCancelActionPerformed(evt);
+            }
+        });
 
         jLabel4.setText("Caballo:");
 
@@ -157,6 +191,20 @@ public class Caballos extends javax.swing.JDialog {
             }
         });
 
+        btnImprimir.setIcon(new javax.swing.ImageIcon(getClass().getResource("/Images/print_icon16.png"))); // NOI18N
+        btnImprimir.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                btnImprimirActionPerformed(evt);
+            }
+        });
+
+        btnExcel.setIcon(new javax.swing.ImageIcon(getClass().getResource("/Images/excel_icon16.png"))); // NOI18N
+        btnExcel.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                btnExcelActionPerformed(evt);
+            }
+        });
+
         javax.swing.GroupLayout jPanel1Layout = new javax.swing.GroupLayout(jPanel1);
         jPanel1.setLayout(jPanel1Layout);
         jPanel1Layout.setHorizontalGroup(
@@ -166,22 +214,27 @@ public class Caballos extends javax.swing.JDialog {
                 .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
                     .addComponent(jSeparator1)
                     .addGroup(javax.swing.GroupLayout.Alignment.LEADING, jPanel1Layout.createSequentialGroup()
-                        .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
+                        .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                            .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
+                                .addGroup(jPanel1Layout.createSequentialGroup()
+                                    .addGap(4, 4, 4)
+                                    .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
+                                        .addComponent(jLabel4)
+                                        .addComponent(jLabel3))
+                                    .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                    .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
+                                        .addComponent(txtCaballos, javax.swing.GroupLayout.DEFAULT_SIZE, 200, Short.MAX_VALUE)
+                                        .addComponent(txtJinete)))
+                                .addGroup(javax.swing.GroupLayout.Alignment.LEADING, jPanel1Layout.createSequentialGroup()
+                                    .addComponent(jLabel1)
+                                    .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                    .addComponent(txtNumero, javax.swing.GroupLayout.PREFERRED_SIZE, 100, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                    .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                    .addComponent(txtIdcaballos, javax.swing.GroupLayout.PREFERRED_SIZE, 36, javax.swing.GroupLayout.PREFERRED_SIZE)))
                             .addGroup(jPanel1Layout.createSequentialGroup()
-                                .addGap(4, 4, 4)
-                                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
-                                    .addComponent(jLabel4)
-                                    .addComponent(jLabel3))
+                                .addComponent(btnImprimir, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)
                                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
-                                    .addComponent(txtCaballos, javax.swing.GroupLayout.DEFAULT_SIZE, 200, Short.MAX_VALUE)
-                                    .addComponent(txtJinete)))
-                            .addGroup(javax.swing.GroupLayout.Alignment.LEADING, jPanel1Layout.createSequentialGroup()
-                                .addComponent(jLabel1)
-                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                .addComponent(txtNumero, javax.swing.GroupLayout.PREFERRED_SIZE, 100, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                .addComponent(txtIdcaballos, javax.swing.GroupLayout.PREFERRED_SIZE, 36, javax.swing.GroupLayout.PREFERRED_SIZE)))
+                                .addComponent(btnExcel, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)))
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 74, Short.MAX_VALUE)
                         .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                             .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
@@ -220,10 +273,13 @@ public class Caballos extends javax.swing.JDialog {
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addComponent(jSeparator1, javax.swing.GroupLayout.PREFERRED_SIZE, 4, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(btnSave)
-                    .addComponent(btnCancel)
-                    .addComponent(chbActive))
+                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                        .addComponent(btnSave)
+                        .addComponent(btnCancel)
+                        .addComponent(chbActive))
+                    .addComponent(btnImprimir)
+                    .addComponent(btnExcel))
                 .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
         );
 
@@ -246,6 +302,8 @@ public class Caballos extends javax.swing.JDialog {
 
         jLabel14.setText("Estado:");
 
+        jSeparator2.setOrientation(javax.swing.SwingConstants.VERTICAL);
+
         javax.swing.GroupLayout jPanel2Layout = new javax.swing.GroupLayout(jPanel2);
         jPanel2.setLayout(jPanel2Layout);
         jPanel2Layout.setHorizontalGroup(
@@ -255,7 +313,9 @@ public class Caballos extends javax.swing.JDialog {
                 .addComponent(jLabel6)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addComponent(txtBuscar, javax.swing.GroupLayout.PREFERRED_SIZE, 250, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addGap(18, 18, 18)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(jSeparator2, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addComponent(jLabel14)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addComponent(cmbEstado, javax.swing.GroupLayout.PREFERRED_SIZE, 138, javax.swing.GroupLayout.PREFERRED_SIZE)
@@ -265,14 +325,57 @@ public class Caballos extends javax.swing.JDialog {
             jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(jPanel2Layout.createSequentialGroup()
                 .addContainerGap()
-                .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
                     .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                         .addComponent(jLabel14)
                         .addComponent(cmbEstado, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
                     .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                         .addComponent(txtBuscar, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addComponent(jLabel6)))
+                        .addComponent(jLabel6))
+                    .addComponent(jSeparator2))
                 .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+        );
+
+        jPanel3.setBorder(javax.swing.BorderFactory.createBevelBorder(javax.swing.border.BevelBorder.RAISED));
+
+        tblCaballos = new javax.swing.JTable(){
+            public boolean isCellEditable(int rowIndex, int colIndex) {
+                return false;
+            }
+        };
+        tblCaballos.setModel(new javax.swing.table.DefaultTableModel(
+            new Object [][] {
+                {},
+                {},
+                {},
+                {}
+            },
+            new String [] {
+
+            }
+        ));
+        tblCaballos.addMouseListener(new java.awt.event.MouseAdapter() {
+            public void mouseClicked(java.awt.event.MouseEvent evt) {
+                tblCaballosMouseClicked(evt);
+            }
+        });
+        jScrollPane1.setViewportView(tblCaballos);
+
+        javax.swing.GroupLayout jPanel3Layout = new javax.swing.GroupLayout(jPanel3);
+        jPanel3.setLayout(jPanel3Layout);
+        jPanel3Layout.setHorizontalGroup(
+            jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(jPanel3Layout.createSequentialGroup()
+                .addContainerGap()
+                .addComponent(jScrollPane1)
+                .addContainerGap())
+        );
+        jPanel3Layout.setVerticalGroup(
+            jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(jPanel3Layout.createSequentialGroup()
+                .addContainerGap()
+                .addComponent(jScrollPane1, javax.swing.GroupLayout.DEFAULT_SIZE, 288, Short.MAX_VALUE)
+                .addContainerGap())
         );
 
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
@@ -282,8 +385,8 @@ public class Caballos extends javax.swing.JDialog {
             .addGroup(layout.createSequentialGroup()
                 .addContainerGap()
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addComponent(jPanel3, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                     .addComponent(jPanel1, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                    .addComponent(jScrollPane1, javax.swing.GroupLayout.DEFAULT_SIZE, 652, Short.MAX_VALUE)
                     .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
                         .addGap(0, 0, Short.MAX_VALUE)
                         .addComponent(jPanel2, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)))
@@ -297,7 +400,7 @@ public class Caballos extends javax.swing.JDialog {
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addComponent(jPanel2, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(jScrollPane1, javax.swing.GroupLayout.PREFERRED_SIZE, 300, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addComponent(jPanel3, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addContainerGap())
         );
 
@@ -373,6 +476,232 @@ public class Caballos extends javax.swing.JDialog {
         }
     }//GEN-LAST:event_chbActiveActionPerformed
 
+    private void btnImprimirActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnImprimirActionPerformed
+        try {
+            DateTimeFormatter fmt = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+            String currentdate = LocalDate.now().format(fmt);
+
+            URL logoURL = getClass().getResource("/Images/icono5.png");
+            String rutaLogo = "";
+            if (logoURL == null) {
+                throw new FileNotFoundException("No se encontró /Images/icono5.png");
+            } else {
+                rutaLogo = logoURL.toString();
+            }
+
+            URL camaraURL = getClass().getResource("/Images/camara16.png");
+            String rutaAbsoluta = "";
+            if (camaraURL == null) {
+                throw new FileNotFoundException("No se encontró /Images/camara16.png");
+            } else {
+                rutaAbsoluta = camaraURL.toString();
+            }
+
+            String ruta = AppPaths.REPORTS_DIR + File.separator + "Caballos.jrxml";
+            File jrxmlFile = new File(ruta);
+            InputStream is = new FileInputStream(jrxmlFile);
+            if (!jrxmlFile.exists()) {
+                throw new FileNotFoundException("No se encontró el .jrxml en: " + ruta);
+            }
+            
+            DefaultTableModel original = (DefaultTableModel) tblCaballos.getModel();
+            int[] colsNoPermitidas = {};
+            List<Integer> colsPermitidas = new ArrayList<>();
+            outer:
+            for (int col = 0; col < original.getColumnCount(); col++) {
+                for (int no : colsNoPermitidas) {
+                    if (col == no) {
+                        continue outer;
+                    }
+                }
+                colsPermitidas.add(col);
+            }
+            DefaultTableModel filtrado = new DefaultTableModel();
+            for (int colIndex : colsPermitidas) {
+                filtrado.addColumn(original.getColumnName(colIndex));
+            }
+            for (int row = 0; row < original.getRowCount(); row++) {
+                Object[] fila = new Object[colsPermitidas.size()];
+                for (int i = 0; i < colsPermitidas.size(); i++) {
+                    fila[i] = original.getValueAt(row, colsPermitidas.get(i));
+                }
+                filtrado.addRow(fila);
+            }
+
+            JRTableModelDataSource datasource = new JRTableModelDataSource(filtrado);
+            JasperReport jr = JasperCompileManager.compileReport(is);
+
+            Map<String, Object> params = new HashMap<>();
+            params.put("Logo", rutaLogo);
+            params.put("Currentdate", currentdate);
+
+            final JasperPrint jasperPrint = JasperFillManager.fillReport(jr, params, datasource);
+
+            if (jasperPrint.getPages() == null || jasperPrint.getPages().isEmpty()) {
+                JOptionPane.showMessageDialog(
+                        this,
+                        "No hay nada en la tabla para mostrar",
+                        "Tabla vacía",
+                        JOptionPane.WARNING_MESSAGE
+                );
+                return;
+            }
+
+            JasperViewer jasperViewer = new JasperViewer(jasperPrint, false);
+            Container viewerContent = jasperViewer.getContentPane();
+            JPanel mainPanel = (JPanel) viewerContent.getComponent(0);
+            JRViewer jrViewer = (JRViewer) mainPanel.getComponent(0);
+            JRViewerToolbar toolbar = (JRViewerToolbar) jrViewer.getComponent(0);
+
+            JButton btnSavee = (JButton) toolbar.getComponent(0);
+            JButton btnPrint = (JButton) toolbar.getComponent(1);
+            btnSavee.setText("Guardar");
+            btnSavee.setPreferredSize(new Dimension(75, 30));
+            btnPrint.setText("Imprimir");
+            btnPrint.setPreferredSize(new Dimension(75, 30));
+
+            ImageIcon camaraIcon = new ImageIcon(rutaAbsoluta);
+            JButton btnImagen = new JButton("PNG");
+            btnImagen.setToolTipText("Guardar reporte como imagen");
+            btnImagen.setIcon(camaraIcon);
+            btnImagen.setPreferredSize(new Dimension(75, 30));
+            btnImagen.addActionListener(e -> {
+                JFileChooser chooser = new JFileChooser();
+                chooser.setDialogTitle("Guardar reporte como PNG");
+                chooser.setFileSelectionMode(JFileChooser.FILES_ONLY); //Sólo archivos
+                chooser.setAcceptAllFileFilterUsed(false); //No permitir “Todos los archivos”
+                FileNameExtensionFilter pngFilter = new FileNameExtensionFilter("PNG (*.png)", "png"); // Filtro de sólo PNG
+                chooser.addChoosableFileFilter(pngFilter);
+                chooser.setFileFilter(pngFilter);
+                chooser.setApproveButtonText("Guardar"); //Texto del botón en español
+                chooser.setApproveButtonToolTipText("Guardar reporte en imágenes PNG");
+
+                if (chooser.showSaveDialog(this) == JFileChooser.APPROVE_OPTION) {
+                    File selected = chooser.getSelectedFile();
+                    String path = selected.getAbsolutePath();
+                    if (!path.toLowerCase().endsWith(".png")) {
+                        path += ".png";
+                        selected = new File(path);
+                    }
+
+                    //Generar y guardar cada pagina
+                    int total = jasperPrint.getPages().size();
+                    float zoomm = 1.0f;
+                    for (int i = 0; i < total; i++) {
+                        try {
+                            Image img = JasperPrintManager.printPageToImage(jasperPrint, i, zoomm);
+                            BufferedImage bimg = new BufferedImage(
+                                    img.getWidth(null), img.getHeight(null),
+                                    BufferedImage.TYPE_INT_ARGB
+                            );
+                            Graphics2D g = bimg.createGraphics();
+                            g.drawImage(img, 0, 0, null);
+                            g.dispose();
+
+                            String baseName = selected.getName();
+                            baseName = baseName.replaceAll("(?i)\\.png$", "");
+                            File outFile = new File(
+                                    selected.getParentFile(),
+                                    baseName + "_" + (i + 1) + ".png"
+                            );
+
+                            ImageIO.write(bimg, "png", outFile);
+                        } catch (JRException | IOException ex) {
+                            ex.printStackTrace();
+                        }
+                    }
+                }
+            });
+
+            Component[] originales = toolbar.getComponents();
+
+            toolbar.removeAll();
+
+            toolbar.add(btnPrint);
+            toolbar.add(Box.createRigidArea(new Dimension(3, 0)));
+            toolbar.add(btnSavee);
+            toolbar.add(Box.createRigidArea(new Dimension(3, 0)));
+            toolbar.add(btnImagen);
+            toolbar.add(Box.createRigidArea(new Dimension(3, 0)));
+
+            for (Component c : originales) {
+                if (c == btnPrint || c == btnSavee /*|| c == btnImagen?*/) {
+                    continue;
+                }
+                toolbar.add(c);
+                toolbar.add(Box.createRigidArea(new Dimension(2, 0)));
+            }
+
+            toolbar.revalidate();
+            toolbar.repaint();
+
+            JDialog dialog = new JDialog((Frame) null, "Caballos", true);
+            dialog.setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
+            dialog.getContentPane().add(
+                    jasperViewer.getContentPane(), BorderLayout.CENTER
+            );
+
+            dialog.setSize(Toolkit.getDefaultToolkit().getScreenSize());
+            dialog.setLocationRelativeTo(null);
+            dialog.setVisible(true);
+
+        } catch (JRException ex) {
+            ex.printStackTrace();
+        } catch (FileNotFoundException ex) {
+            Logger.getLogger(Caballos.class.getName()).log(Level.SEVERE, null, ex);
+        }
+    }//GEN-LAST:event_btnImprimirActionPerformed
+
+    private void btnExcelActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnExcelActionPerformed
+        DefaultTableModel model = (DefaultTableModel) tblCaballos.getModel();
+        if (model.getRowCount() == 0) {
+            JOptionPane.showMessageDialog(this,
+                    "La tabla está vacía. No se puede exportar un Excel sin datos.",
+                    "Tabla vacía",
+                    JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+        
+        Set<Integer> columnsToSkip = Set.of(0);
+        
+        JFileChooser chooser = new JFileChooser();
+        chooser.setDialogTitle("Guardar Excel");
+        chooser.setApproveButtonText("Guardar");
+        // Filtro opcional para que solo se muestre .xlsx
+        chooser.setFileFilter(new FileNameExtensionFilter("Excel Workbook (*.xlsx)", "xlsx"));
+        chooser.setSelectedFile(new File("Caballos.xlsx"));
+
+        int opcion = chooser.showSaveDialog(this);
+        if (opcion != JFileChooser.APPROVE_OPTION) {
+            return;  // cancelado
+        }
+
+        File destino = chooser.getSelectedFile();
+        if (!destino.getName().toLowerCase().endsWith(".xlsx")) {
+            destino = new File(destino.getParentFile(), destino.getName() + ".xlsx");
+        }
+
+        try {
+            Export_Excel.export(tblCaballos,
+                    "Caballos",
+                    destino.getAbsolutePath(), columnsToSkip
+            );
+            // Abrir automáticamente
+            if (Desktop.isDesktopSupported()) {
+                Desktop.getDesktop().open(destino);
+            }
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(this,
+                    "Error al exportar:\n" + ex.getMessage(),
+                    "Error", JOptionPane.ERROR_MESSAGE);
+            ex.printStackTrace();
+        }
+    }//GEN-LAST:event_btnExcelActionPerformed
+
+    private void btnCancelActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnCancelActionPerformed
+        this.dispose();
+    }//GEN-LAST:event_btnCancelActionPerformed
+
     /**
      * @param args the command line arguments
      */
@@ -435,6 +764,8 @@ public class Caballos extends javax.swing.JDialog {
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JTextArea atxtObservacion;
     private javax.swing.JButton btnCancel;
+    private javax.swing.JButton btnExcel;
+    private javax.swing.JButton btnImprimir;
     private javax.swing.JButton btnSave;
     private javax.swing.ButtonGroup buttonGroup1;
     private javax.swing.JCheckBox chbActive;
@@ -447,9 +778,11 @@ public class Caballos extends javax.swing.JDialog {
     private javax.swing.JLabel jLabel6;
     private javax.swing.JPanel jPanel1;
     private javax.swing.JPanel jPanel2;
+    private javax.swing.JPanel jPanel3;
     private javax.swing.JScrollPane jScrollPane1;
     private javax.swing.JScrollPane jScrollPane3;
     private javax.swing.JSeparator jSeparator1;
+    private javax.swing.JSeparator jSeparator2;
     private javax.swing.JTable tblCaballos;
     private javax.swing.JTextField txtBuscar;
     private javax.swing.JTextField txtCaballos;

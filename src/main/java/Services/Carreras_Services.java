@@ -23,13 +23,21 @@ public class Carreras_Services {
     public int getMaxCodigo() {
         return Carreras_repository.getMaxCodigo();
     }
+    
+    public int getIdganador(Integer idcarreras){
+        return Carreras_repository.getIdganador(idcarreras);
+    }
 
     public DefaultTableModel showCarreras(String search, String fase, String stateFilter) {
         return Carreras_repository.showCarreras(search, fase, stateFilter);
     }
 
-    public DefaultTableModel showCarrerasInPrincipal(String search, String statusFilter) {
-        return Carreras_repository.showCarrerasInPrincipal(search, statusFilter);
+    public DefaultTableModel showCarrerasInPrincipal(String search, String stateFilter, String statusFilter, String datefrom, String dateto) {
+        return Carreras_repository.showCarrerasInPrincipal(search, stateFilter, statusFilter, datefrom, dateto);
+    }
+
+    public DefaultTableModel showCarrerasForEdit(String search, String statusFilter) {
+        return Carreras_repository.showCarrerasForEdit(search, statusFilter);
     }
 
     public DefaultTableModel showCaballosInCarreras(String search) {

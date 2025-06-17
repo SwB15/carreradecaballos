@@ -23,7 +23,7 @@ public class Detallecarreras_Controller {
         model.setFk_caballos(foreignKey2);
         return services.updateDetallecarreras(model);
     }
-    
+
     public boolean deleteDetallecarreras(int id) {
         model.setFk_carreras(id);
         return services.deleteDetallecarreras(model);

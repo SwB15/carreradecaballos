@@ -1,0 +1,128 @@
+<!-- Created with Jaspersoft Studio version 7.0.1.final using JasperReports Library version 7.0.1-573496633c2b4074e32f433154b543003f7d2498  -->
+<jasperReport name="Perfil" language="java" pageWidth="595" pageHeight="842" columnWidth="555" leftMargin="20" rightMargin="20" topMargin="20" bottomMargin="20" uuid="d4d5545b-641c-4985-8143-359e650b192f">
+	<parameter name="Desde" class="java.lang.String"/>
+	<parameter name="Hasta" class="java.lang.String"/>
+	<parameter name="Logo" class="java.lang.String"/>
+	<parameter name="Numero" class="java.lang.String"/>
+	<parameter name="Cedula" class="java.lang.String"/>
+	<parameter name="Nombre" class="java.lang.String"/>
+	<parameter name="Currentdate" class="java.lang.String"/>
+	<query language="sql"><![CDATA[]]></query>
+	<field name="Apostador" class="java.lang.String"/>
+	<field name="Monto" class="java.lang.String"/>
+	<field name="Fecha" class="java.lang.String"/>
+	<field name="Caballo" class="java.lang.String"/>
+	<field name="Resultado" class="java.lang.String"/>
+	<background splitType="Stretch"/>
+	<title height="57" splitType="Stretch">
+		<element kind="staticText" uuid="56013f2c-1d07-4627-bea4-4d1aafd6296c" x="60" y="0" width="100" height="50" hTextAlign="Left" vTextAlign="Middle">
+			<text><![CDATA[Lista de Movimientos del apostador]]></text>
+		</element>
+		<element kind="image" uuid="62a739f4-6fa1-4cb7-99f9-d67f3740a499" x="0" y="0" width="50" height="50">
+			<expression><![CDATA[$P{Logo}]]></expression>
+		</element>
+		<element kind="textField" uuid="9007b71c-3c14-49d6-ab41-e720769c3a70" x="243" y="0" width="100" height="20">
+			<expression><![CDATA["Desde: "+$P{Desde}]]></expression>
+			<box padding="3"/>
+		</element>
+		<element kind="textField" uuid="1ed4c221-f149-4799-8056-431448de5141" x="243" y="20" width="100" height="20">
+			<expression><![CDATA["Hasta: "+$P{Hasta}]]></expression>
+			<box padding="3"/>
+		</element>
+		<element kind="textField" uuid="379ee834-3979-4973-ba1d-73bc5116c1ea" x="427" y="0" width="123" height="20">
+			<expression><![CDATA["Fecha: "+$P{Currentdate}]]></expression>
+		</element>
+		<element kind="textField" uuid="f7a1cc93-e7eb-4f0e-8933-019e008bbbc7" x="427" y="20" width="123" height="30" hTextAlign="Left">
+			<expression><![CDATA["Página " + $V{PAGE_NUMBER} + " de " + $V{PAGE_NUMBER}]]></expression>
+			<box padding="0"/>
+		</element>
+	</title>
+	<pageHeader height="76" splitType="Stretch">
+		<element kind="textField" uuid="c0a3619d-26ce-48eb-976e-bf0a7675b6d9" x="27" y="40" width="230" height="20">
+			<expression><![CDATA["Nombre: "+$P{Nombre}]]></expression>
+		</element>
+		<element kind="textField" uuid="c7dc0903-8e73-464d-a144-4449bec016e0" x="27" y="0" width="230" height="20">
+			<expression><![CDATA["Número: "+$P{Numero}]]></expression>
+		</element>
+		<element kind="textField" uuid="adf2cc91-510d-4c3e-9ef8-ad1b3c41ca75" x="27" y="20" width="230" height="20">
+			<expression><![CDATA["Cédula: "+$P{Cedula}]]></expression>
+		</element>
+	</pageHeader>
+	<columnHeader height="20" splitType="Stretch">
+		<element kind="staticText" uuid="e73067d2-c588-473a-8020-57a8f4572781" x="227" y="0" width="100" height="20" bold="true" hTextAlign="Center" vTextAlign="Middle">
+			<text><![CDATA[Fecha]]></text>
+			<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="e02a65f9-261f-4d51-93f7-f32becdd9e2e"/>
+			<box>
+				<pen lineWidth="1.0"/>
+			</box>
+		</element>
+		<element kind="staticText" uuid="8fdf3a78-5510-4a50-a2ee-bbf60696d6ed" x="127" y="0" width="100" height="20" bold="true" hTextAlign="Center" vTextAlign="Middle">
+			<text><![CDATA[Monto]]></text>
+			<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="a53402c7-c52c-4778-9496-506e88d213f9"/>
+			<box>
+				<pen lineWidth="1.0"/>
+			</box>
+		</element>
+		<element kind="staticText" uuid="36372068-902f-4d08-9156-b8a3566b60ee" x="27" y="0" width="100" height="20" bold="true" hTextAlign="Center" vTextAlign="Middle">
+			<text><![CDATA[Apostador]]></text>
+			<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="dfd8ecbf-fa9d-478e-9318-3ac7e77f1f8a"/>
+			<box>
+				<pen lineWidth="1.0"/>
+			</box>
+		</element>
+		<element kind="staticText" uuid="35ebe790-ff81-4462-99d3-49d008278a60" x="327" y="0" width="100" height="20" bold="true" hTextAlign="Center" vTextAlign="Middle">
+			<text><![CDATA[Caballo]]></text>
+			<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="a63b988a-4394-468f-acbf-c82dfb466508"/>
+			<box>
+				<pen lineWidth="1.0"/>
+			</box>
+		</element>
+		<element kind="staticText" uuid="145b5e06-119e-4a75-90fa-04b66542fb26" x="427" y="0" width="100" height="20" bold="true" hTextAlign="Center" vTextAlign="Middle">
+			<text><![CDATA[Resultado]]></text>
+			<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="bc68e3a5-ecfb-40ba-8a90-1aa6d05ab027"/>
+			<box>
+				<pen lineWidth="1.0"/>
+			</box>
+		</element>
+	</columnHeader>
+	<detail>
+		<band height="20" splitType="Stretch">
+			<element kind="textField" uuid="e80bbae5-4569-4a5f-8742-293bfffd9658" stretchType="ContainerBottom" x="227" y="0" width="100" height="20" hTextAlign="Center" vTextAlign="Middle">
+				<expression><![CDATA[$F{Fecha}]]></expression>
+				<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="e02a65f9-261f-4d51-93f7-f32becdd9e2e"/>
+				<box topPadding="3" leftPadding="3" bottomPadding="3" rightPadding="3">
+					<pen lineWidth="1.0"/>
+				</box>
+			</element>
+			<element kind="textField" uuid="bfc90ccf-03f9-4a95-b13e-00de3a6d2420" stretchType="ContainerBottom" x="127" y="0" width="100" height="20" hTextAlign="Center" vTextAlign="Middle">
+				<expression><![CDATA[$F{Monto}]]></expression>
+				<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="a53402c7-c52c-4778-9496-506e88d213f9"/>
+				<box topPadding="3" leftPadding="3" bottomPadding="3" rightPadding="3">
+					<pen lineWidth="1.0"/>
+				</box>
+			</element>
+			<element kind="textField" uuid="3b460d73-aa70-4dc0-b52b-5911ce6e146e" stretchType="ContainerBottom" x="27" y="0" width="100" height="20" vTextAlign="Middle">
+				<expression><![CDATA[$F{Apostador}]]></expression>
+				<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="dfd8ecbf-fa9d-478e-9318-3ac7e77f1f8a"/>
+				<box topPadding="3" leftPadding="3" bottomPadding="3" rightPadding="3">
+					<pen lineWidth="1.0"/>
+				</box>
+			</element>
+			<element kind="textField" uuid="03c40a75-506f-4cf4-8481-f6e9030d9da9" stretchType="ContainerBottom" x="327" y="0" width="100" height="20" vTextAlign="Middle">
+				<expression><![CDATA[$F{Caballo}]]></expression>
+				<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="a63b988a-4394-468f-acbf-c82dfb466508"/>
+				<box topPadding="3" leftPadding="3" bottomPadding="3" rightPadding="3">
+					<pen lineWidth="1.0"/>
+				</box>
+			</element>
+			<element kind="textField" uuid="3cbe286f-deb5-4b30-a066-aa93608bafa4" stretchType="ContainerBottom" x="427" y="0" width="100" height="20" vTextAlign="Middle">
+				<expression><![CDATA[$F{Resultado}]]></expression>
+				<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="bc68e3a5-ecfb-40ba-8a90-1aa6d05ab027"/>
+				<box topPadding="3" leftPadding="3" bottomPadding="3" rightPadding="3">
+					<pen lineWidth="1.0"/>
+				</box>
+			</element>
+		</band>
+	</detail>
+	<summary height="30" splitType="Stretch"/>
+</jasperReport>

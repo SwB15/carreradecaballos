@@ -15,7 +15,7 @@ public class CargarGanador extends javax.swing.JDialog {
 
     Carreras_Controller carreras_controller = new Carreras_Controller();
 
-    public CargarGanador(java.awt.Frame parent, boolean modal, int idcarreras, String carrera) {
+    public CargarGanador(java.awt.Frame parent, boolean modal, int idcarreras, String carrera, HashMap<String, String> caballosMap) {
         super(parent, modal);
         initComponents();
         this.setLocationRelativeTo(null);
@@ -25,16 +25,12 @@ public class CargarGanador extends javax.swing.JDialog {
         txtIdcarreras.setText(String.valueOf(idcarreras));
         txtIdcarreras.setVisible(false);
         txtIdcaballos.setVisible(false);
-        System.out.println("txtIdcarreras: " + txtIdcarreras.getText());
-        cargarCaballosComboBox(Integer.parseInt(txtIdcarreras.getText()));
         txtCarreras.transferFocus();
         cmbCaballos.requestFocus();
+        cargarCaballosComboBox(caballosMap);
     }
 
-    private void cargarCaballosComboBox(int idCarrera) {
-        // Obtenemos el HashMap con los caballos (ID -> nombre)
-        HashMap<String, String> caballosMap = carreras_controller.getCaballosPorCarrera(idCarrera);
-
+    public void cargarCaballosComboBox(HashMap<String, String> caballosMap) {
         cmbCaballos.removeAllItems();
 
         // Agregamos los nombres de los caballos al ComboBox
@@ -107,6 +103,11 @@ public class CargarGanador extends javax.swing.JDialog {
         jLabel2.setText("Caballo:");
 
         cmbCaballos.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "Item 1", "Item 2", "Item 3", "Item 4" }));
+        cmbCaballos.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                cmbCaballosActionPerformed(evt);
+            }
+        });
 
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
         getContentPane().setLayout(layout);
@@ -164,8 +165,8 @@ public class CargarGanador extends javax.swing.JDialog {
         if (txtCarreras.getText().length() == 0) {
             JOptionPane.showMessageDialog(null, "Necesitas seleccionar o cargar una carrera primeramente", "Advertencia!", JOptionPane.WARNING_MESSAGE);
         } else {
-            Carreras.txtIdganador.setText(txtIdcaballos.getText());
-            Carreras.txtGanador.setText(cmbCaballos.getSelectedItem().toString());
+            NewApuestas.txtIdganador.setText(txtIdcaballos.getText());
+            NewApuestas.txtGanador.setText(cmbCaballos.getSelectedItem().toString());
             this.dispose();
         }
     }//GEN-LAST:event_btnSaveActionPerformed
@@ -173,6 +174,10 @@ public class CargarGanador extends javax.swing.JDialog {
     private void btnCancelActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnCancelActionPerformed
         this.dispose();
     }//GEN-LAST:event_btnCancelActionPerformed
+
+    private void cmbCaballosActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_cmbCaballosActionPerformed
+        // TODO add your handling code here:
+    }//GEN-LAST:event_cmbCaballosActionPerformed
 
 
     // Variables declaration - do not modify//GEN-BEGIN:variables

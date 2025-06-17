@@ -87,11 +87,17 @@ public class Configuraciones extends javax.swing.JDialog {
         btnDelete = new javax.swing.JButton();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.DISPOSE_ON_CLOSE);
+        setTitle("Ajustes");
 
         jPanel2.setBorder(javax.swing.BorderFactory.createBevelBorder(javax.swing.border.BevelBorder.RAISED));
 
         jLabel2.setText("Restaurar:");
 
+        tblBackups = new javax.swing.JTable(){
+            public boolean isCellEditable(int rowIndex, int colIndex) {
+                return false;
+            }
+        };
         tblBackups.setModel(new javax.swing.table.DefaultTableModel(
             new Object [][] {
                 {null, null, null},

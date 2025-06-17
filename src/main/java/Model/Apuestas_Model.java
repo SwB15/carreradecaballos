@@ -5,29 +5,31 @@ public class Apuestas_Model {
     private int idapuestas;
     private String apuesta;
     private int monto;
-    private int abonado;
     private String fecha;
     private String fechalimite;
     private String observacion;
+    private String saldousado;
     private int fk_carreras;
     private int fk_caballos;
     private int fk_apostadores;
+    private int fk_estadopago;
     private int fk_estados;
 
     public Apuestas_Model() {
     }
 
-    public Apuestas_Model(int idapuestas, String apuesta, int monto, int abonado, String fecha, String fechalimite, String observacion, int fk_carreras, int fk_caballos, int fk_apostadores, int fk_estados) {
+    public Apuestas_Model(int idapuestas, String apuesta, int monto, String fecha, String fechalimite, String observacion, String saldousado, int fk_carreras, int fk_caballos, int fk_apostadores, int fk_estadopago, int fk_estados) {
         this.idapuestas = idapuestas;
         this.apuesta = apuesta;
         this.monto = monto;
-        this.abonado = abonado;
         this.fecha = fecha;
         this.fechalimite = fechalimite;
         this.observacion = observacion;
+        this.saldousado = saldousado;
         this.fk_carreras = fk_carreras;
         this.fk_caballos = fk_caballos;
         this.fk_apostadores = fk_apostadores;
+        this.fk_estadopago = fk_estadopago;
         this.fk_estados = fk_estados;
     }
 
@@ -55,14 +57,6 @@ public class Apuestas_Model {
         this.monto = monto;
     }
 
-    public int getAbonado() {
-        return abonado;
-    }
-
-    public void setAbonado(int abonado) {
-        this.abonado = abonado;
-    }
-
     public String getFecha() {
         return fecha;
     }
@@ -87,6 +81,14 @@ public class Apuestas_Model {
         this.observacion = observacion;
     }
 
+    public String getSaldousado() {
+        return saldousado;
+    }
+
+    public void setSaldousado(String saldousado) {
+        this.saldousado = saldousado;
+    }
+    
     public int getFk_carreras() {
         return fk_carreras;
     }
@@ -109,6 +111,14 @@ public class Apuestas_Model {
 
     public void setFk_apostadores(int fk_apostadores) {
         this.fk_apostadores = fk_apostadores;
+    }
+
+    public int getFk_estadopago() {
+        return fk_estadopago;
+    }
+
+    public void setFk_estadopago(int fk_estadopago) {
+        this.fk_estadopago = fk_estadopago;
     }
 
     public int getFk_estados() {

@@ -80,7 +80,7 @@ public class Notificacion extends javax.swing.JDialog {
 
                 // Mensaje de notificación
                 String mensaje = "<html><b>La apuesta realizada por " + apuesta.nombreApostador
-                        + " en la carrera " + apuesta.nombreCarrera + " ha vencido en fecha: " + fechalimite
+                        + " en " + apuesta.nombreCarrera + " ha vencido el: " + fechalimite
                         + ".</b><br>Datos de la apuesta:<br>"
                         + "Fecha: " + fecha + " <br> Fecha Límite: " + fechalimite
                         + " <br> Monto: " + montoapuesta + " <br> Abonado: " + montoabonado + "</html>";

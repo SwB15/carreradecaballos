@@ -1,13 +1,60 @@
 package View;
 
+import Config.AppPaths;
+import Config.Export_Excel;
 import Config.Run;
 import Controller.Apostadores_Controller;
+import Controller.Movimientos_Controller;
 import Controller.State_Controller;
-import java.awt.Frame;
+import java.awt.BorderLayout;
+import java.awt.Color;
+import java.awt.Component;
+import java.awt.Container;
 import java.awt.event.KeyEvent;
+import java.util.Set;
 import javax.swing.JOptionPane;
 import javax.swing.JTable;
 import javax.swing.table.DefaultTableModel;
+import java.awt.Frame;               // para la referencia a la ventana padre
+import java.awt.Desktop;             // para abrir el archivo con la app predeterminada
+import java.awt.Dimension;
+import java.awt.Graphics2D;
+import java.awt.Image;
+import java.awt.Toolkit;
+import java.awt.image.BufferedImage;
+import java.io.File;                 // para construir la ruta del fichero
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.InputStream;
+import java.net.URL;
+import java.nio.file.Paths;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+import javax.imageio.ImageIO;
+import javax.swing.Box;
+import javax.swing.ImageIcon;
+import javax.swing.JButton;
+import javax.swing.JDialog;
+import javax.swing.JFileChooser;
+import javax.swing.JPanel;
+import javax.swing.filechooser.FileNameExtensionFilter;
+import net.sf.jasperreports.engine.JRException;
+import net.sf.jasperreports.engine.JasperCompileManager;
+import net.sf.jasperreports.engine.JasperFillManager;
+import net.sf.jasperreports.engine.JasperPrint;
+import net.sf.jasperreports.engine.JasperPrintManager;
+import net.sf.jasperreports.engine.JasperReport;
+import net.sf.jasperreports.engine.data.JRTableModelDataSource;
+import net.sf.jasperreports.swing.JRViewer;
+import net.sf.jasperreports.swing.JRViewerToolbar;
+import net.sf.jasperreports.view.JasperViewer;
 
 /**
  *
@@ -16,9 +63,10 @@ import javax.swing.table.DefaultTableModel;
 public class Apostadores extends javax.swing.JDialog {
 
     Apostadores_Controller controller = new Apostadores_Controller();
+    Movimientos_Controller movimientoscontroller = new Movimientos_Controller();
 
     private String initialState = "", finalState = "", stateFilter = "todos";
-    private String id = "";
+    private String id = "", desde = "", hasta = "";
     private int idestado;
 
     public Apostadores(java.awt.Frame parent, boolean modal) {
@@ -26,11 +74,15 @@ public class Apostadores extends javax.swing.JDialog {
         initComponents();
         this.setLocationRelativeTo(null);
         txtIdapostadores.setVisible(false);
+        txtSaldo.setEditable(false);
+        txtSaldo.setBackground(Color.white);
         txtNumero.setEditable(false);
         txtNumero.setText(String.valueOf(controller.getMaxCodigo()));
         txtNumero.transferFocus();
         txtNombre.requestFocus();
         showApostadores("", stateFilter);
+        btnModificar.setEnabled(false);
+        btnActualizarOculto.setVisible(false);
     }
 
     private void showApostadores(String search, String stateFilter) {
@@ -48,12 +100,17 @@ public class Apostadores extends javax.swing.JDialog {
         table.getColumnModel().getColumn(0).setMaxWidth(0);
         table.getColumnModel().getColumn(0).setMinWidth(0);
         table.getColumnModel().getColumn(0).setPreferredWidth(0);
+
+        table.getColumnModel().getColumn(5).setMaxWidth(80);
+        table.getColumnModel().getColumn(5).setMinWidth(80);
+        table.getColumnModel().getColumn(5).setPreferredWidth(80);
     }
 
     private void limpiar() {
         txtIdapostadores.setText("");
         txtCedula.setText("");
         txtNombre.setText("");
+        txtSaldo.setText("");
         atxtObservacion.setText("");
     }
 
@@ -61,8 +118,6 @@ public class Apostadores extends javax.swing.JDialog {
     // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
     private void initComponents() {
 
-        jScrollPane1 = new javax.swing.JScrollPane();
-        tblApostadores = new javax.swing.JTable();
         jPanel1 = new javax.swing.JPanel();
         txtNumero = new javax.swing.JTextField();
         jLabel1 = new javax.swing.JLabel();
@@ -78,37 +133,24 @@ public class Apostadores extends javax.swing.JDialog {
         txtIdapostadores = new javax.swing.JTextField();
         jScrollPane3 = new javax.swing.JScrollPane();
         atxtObservacion = new javax.swing.JTextArea();
+        jLabel5 = new javax.swing.JLabel();
+        txtSaldo = new javax.swing.JTextField();
+        btnModificar = new javax.swing.JButton();
+        btnActualizarOculto = new javax.swing.JButton();
+        btnImprimir = new javax.swing.JButton();
+        btnExcel = new javax.swing.JButton();
         jPanel3 = new javax.swing.JPanel();
         txtBuscar = new javax.swing.JTextField();
         jLabel6 = new javax.swing.JLabel();
         cmbEstado = new javax.swing.JComboBox<>();
         jLabel14 = new javax.swing.JLabel();
+        jSeparator2 = new javax.swing.JSeparator();
+        jPanel2 = new javax.swing.JPanel();
+        jScrollPane1 = new javax.swing.JScrollPane();
+        tblApostadores = new javax.swing.JTable();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.DISPOSE_ON_CLOSE);
         setTitle("Apostadores");
-
-        tblApostadores = new javax.swing.JTable(){
-            public boolean isCellEditable(int rowIndex, int colIndex) {
-                return false;
-            }
-        };
-        tblApostadores.setModel(new javax.swing.table.DefaultTableModel(
-            new Object [][] {
-                {},
-                {},
-                {},
-                {}
-            },
-            new String [] {
-
-            }
-        ));
-        tblApostadores.addMouseListener(new java.awt.event.MouseAdapter() {
-            public void mouseClicked(java.awt.event.MouseEvent evt) {
-                tblApostadoresMouseClicked(evt);
-            }
-        });
-        jScrollPane1.setViewportView(tblApostadores);
 
         jPanel1.setBorder(javax.swing.BorderFactory.createBevelBorder(javax.swing.border.BevelBorder.RAISED));
 
@@ -165,44 +207,97 @@ public class Apostadores extends javax.swing.JDialog {
         });
         jScrollPane3.setViewportView(atxtObservacion);
 
+        jLabel5.setText("Saldo");
+
+        txtSaldo.setText("0");
+        txtSaldo.addKeyListener(new java.awt.event.KeyAdapter() {
+            public void keyPressed(java.awt.event.KeyEvent evt) {
+                txtSaldoKeyPressed(evt);
+            }
+            public void keyReleased(java.awt.event.KeyEvent evt) {
+                txtSaldoKeyReleased(evt);
+            }
+            public void keyTyped(java.awt.event.KeyEvent evt) {
+                txtSaldoKeyTyped(evt);
+            }
+        });
+
+        btnModificar.setText("Modificar");
+        btnModificar.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                btnModificarActionPerformed(evt);
+            }
+        });
+
+        btnActualizarOculto.setText("Act. Oculto");
+        btnActualizarOculto.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                btnActualizarOcultoActionPerformed(evt);
+            }
+        });
+
+        btnImprimir.setIcon(new javax.swing.ImageIcon(getClass().getResource("/Images/print_icon16.png"))); // NOI18N
+        btnImprimir.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                btnImprimirActionPerformed(evt);
+            }
+        });
+
+        btnExcel.setIcon(new javax.swing.ImageIcon(getClass().getResource("/Images/excel_icon16.png"))); // NOI18N
+        btnExcel.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                btnExcelActionPerformed(evt);
+            }
+        });
+
         javax.swing.GroupLayout jPanel1Layout = new javax.swing.GroupLayout(jPanel1);
         jPanel1.setLayout(jPanel1Layout);
         jPanel1Layout.setHorizontalGroup(
             jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(jPanel1Layout.createSequentialGroup()
-                .addGap(8, 8, 8)
-                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
-                    .addGroup(jPanel1Layout.createSequentialGroup()
+                .addContainerGap()
+                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, jPanel1Layout.createSequentialGroup()
                         .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
-                            .addGroup(jPanel1Layout.createSequentialGroup()
-                                .addComponent(chbActive)
-                                .addGap(23, 23, 23)
-                                .addComponent(btnSave)
-                                .addGap(6, 6, 6)
-                                .addComponent(btnCancel))
-                            .addComponent(jSeparator1, javax.swing.GroupLayout.PREFERRED_SIZE, 682, javax.swing.GroupLayout.PREFERRED_SIZE))
-                        .addGap(8, 8, 8))
-                    .addGroup(jPanel1Layout.createSequentialGroup()
-                        .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                            .addComponent(jLabel2)
                             .addComponent(jLabel1)
-                            .addComponent(jLabel2, javax.swing.GroupLayout.Alignment.TRAILING)
-                            .addComponent(jLabel3, javax.swing.GroupLayout.Alignment.TRAILING))
-                        .addGap(6, 6, 6)
-                        .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
-                            .addGroup(jPanel1Layout.createSequentialGroup()
-                                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                                    .addComponent(txtCedula, javax.swing.GroupLayout.PREFERRED_SIZE, 100, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                    .addComponent(txtNombre, javax.swing.GroupLayout.PREFERRED_SIZE, 200, javax.swing.GroupLayout.PREFERRED_SIZE))
-                                .addGap(197, 197, 197))
+                            .addComponent(jLabel3)
+                            .addComponent(jLabel5))
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                             .addGroup(jPanel1Layout.createSequentialGroup()
                                 .addComponent(txtNumero, javax.swing.GroupLayout.PREFERRED_SIZE, 100, javax.swing.GroupLayout.PREFERRED_SIZE)
                                 .addGap(57, 57, 57)
                                 .addComponent(txtIdapostadores, javax.swing.GroupLayout.PREFERRED_SIZE, 43, javax.swing.GroupLayout.PREFERRED_SIZE)
                                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                                .addComponent(jLabel4, javax.swing.GroupLayout.PREFERRED_SIZE, 83, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)))
+                                .addComponent(jLabel4, javax.swing.GroupLayout.PREFERRED_SIZE, 83, javax.swing.GroupLayout.PREFERRED_SIZE))
+                            .addGroup(jPanel1Layout.createSequentialGroup()
+                                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                                    .addComponent(txtSaldo, javax.swing.GroupLayout.PREFERRED_SIZE, 100, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                    .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
+                                        .addComponent(btnModificar, javax.swing.GroupLayout.PREFERRED_SIZE, 94, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                        .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                                            .addComponent(txtCedula, javax.swing.GroupLayout.PREFERRED_SIZE, 100, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                            .addComponent(txtNombre, javax.swing.GroupLayout.PREFERRED_SIZE, 200, javax.swing.GroupLayout.PREFERRED_SIZE))))
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                .addComponent(btnActualizarOculto)))
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                         .addComponent(jScrollPane3, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addContainerGap())))
+                        .addContainerGap())
+                    .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, jPanel1Layout.createSequentialGroup()
+                        .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
+                            .addComponent(jSeparator1, javax.swing.GroupLayout.PREFERRED_SIZE, 682, javax.swing.GroupLayout.PREFERRED_SIZE)
+                            .addGroup(jPanel1Layout.createSequentialGroup()
+                                .addComponent(btnImprimir, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                .addComponent(btnExcel, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                                .addComponent(chbActive)
+                                .addGap(23, 23, 23)
+                                .addComponent(btnSave)
+                                .addGap(6, 6, 6)
+                                .addComponent(btnCancel)))
+                        .addGap(8, 8, 8))))
         );
         jPanel1Layout.setVerticalGroup(
             jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -212,18 +307,25 @@ public class Apostadores extends javax.swing.JDialog {
                     .addGroup(jPanel1Layout.createSequentialGroup()
                         .addGap(3, 3, 3)
                         .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                            .addComponent(jScrollPane3, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                             .addGroup(jPanel1Layout.createSequentialGroup()
-                                .addComponent(jLabel1)
-                                .addGap(12, 12, 12)
+                                .addGap(28, 28, 28)
                                 .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                                     .addComponent(txtNombre, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                                     .addComponent(jLabel2))
                                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                                 .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                                     .addComponent(txtCedula, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                    .addComponent(jLabel3)))
-                            .addComponent(jScrollPane3, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)))
-                    .addComponent(txtNumero, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                    .addComponent(jLabel3))
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                                    .addComponent(txtSaldo, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                    .addComponent(jLabel5)
+                                    .addComponent(btnModificar)
+                                    .addComponent(btnActualizarOculto)))))
+                    .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                        .addComponent(txtNumero, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addComponent(jLabel1))
                     .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                         .addComponent(txtIdapostadores, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                         .addComponent(jLabel4)))
@@ -233,10 +335,13 @@ public class Apostadores extends javax.swing.JDialog {
                 .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                     .addGroup(jPanel1Layout.createSequentialGroup()
                         .addGap(1, 1, 1)
-                        .addComponent(chbActive))
+                        .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                            .addComponent(btnImprimir)
+                            .addComponent(btnExcel)
+                            .addComponent(chbActive)))
                     .addComponent(btnSave)
                     .addComponent(btnCancel))
-                .addContainerGap(9, Short.MAX_VALUE))
+                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
         );
 
         jPanel3.setBorder(javax.swing.BorderFactory.createBevelBorder(javax.swing.border.BevelBorder.RAISED));
@@ -258,34 +363,78 @@ public class Apostadores extends javax.swing.JDialog {
 
         jLabel14.setText("Estado:");
 
+        jSeparator2.setOrientation(javax.swing.SwingConstants.VERTICAL);
+
         javax.swing.GroupLayout jPanel3Layout = new javax.swing.GroupLayout(jPanel3);
         jPanel3.setLayout(jPanel3Layout);
         jPanel3Layout.setHorizontalGroup(
             jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(jPanel3Layout.createSequentialGroup()
-                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                .addGroup(jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, jPanel3Layout.createSequentialGroup()
-                        .addComponent(jLabel6)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(txtBuscar, javax.swing.GroupLayout.PREFERRED_SIZE, 250, javax.swing.GroupLayout.PREFERRED_SIZE))
-                    .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, jPanel3Layout.createSequentialGroup()
-                        .addComponent(jLabel14)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(cmbEstado, javax.swing.GroupLayout.PREFERRED_SIZE, 138, javax.swing.GroupLayout.PREFERRED_SIZE)))
+                .addContainerGap(14, Short.MAX_VALUE)
+                .addComponent(jLabel6)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(txtBuscar, javax.swing.GroupLayout.PREFERRED_SIZE, 250, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(jSeparator2, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(jLabel14)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(cmbEstado, javax.swing.GroupLayout.PREFERRED_SIZE, 138, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addContainerGap())
         );
         jPanel3Layout.setVerticalGroup(
             jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(jPanel3Layout.createSequentialGroup()
+                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                .addGroup(jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                        .addComponent(jLabel14)
+                        .addComponent(cmbEstado, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addComponent(txtBuscar, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addComponent(jLabel6))
+                    .addComponent(jSeparator2, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.PREFERRED_SIZE, 22, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addContainerGap())
+        );
+
+        jPanel2.setBorder(javax.swing.BorderFactory.createBevelBorder(javax.swing.border.BevelBorder.RAISED));
+
+        tblApostadores = new javax.swing.JTable(){
+            public boolean isCellEditable(int rowIndex, int colIndex) {
+                return false;
+            }
+        };
+        tblApostadores.setModel(new javax.swing.table.DefaultTableModel(
+            new Object [][] {
+                {},
+                {},
+                {},
+                {}
+            },
+            new String [] {
+
+            }
+        ));
+        tblApostadores.addMouseListener(new java.awt.event.MouseAdapter() {
+            public void mouseClicked(java.awt.event.MouseEvent evt) {
+                tblApostadoresMouseClicked(evt);
+            }
+        });
+        jScrollPane1.setViewportView(tblApostadores);
+
+        javax.swing.GroupLayout jPanel2Layout = new javax.swing.GroupLayout(jPanel2);
+        jPanel2.setLayout(jPanel2Layout);
+        jPanel2Layout.setHorizontalGroup(
+            jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, jPanel2Layout.createSequentialGroup()
                 .addContainerGap()
-                .addGroup(jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(txtBuscar, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(jLabel6))
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                .addGroup(jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(jLabel14)
-                    .addComponent(cmbEstado, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addComponent(jScrollPane1)
+                .addContainerGap())
+        );
+        jPanel2Layout.setVerticalGroup(
+            jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(jPanel2Layout.createSequentialGroup()
+                .addContainerGap()
+                .addComponent(jScrollPane1, javax.swing.GroupLayout.DEFAULT_SIZE, 356, Short.MAX_VALUE)
                 .addContainerGap())
         );
 
@@ -294,23 +443,25 @@ public class Apostadores extends javax.swing.JDialog {
         layout.setHorizontalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(layout.createSequentialGroup()
-                .addGap(6, 6, 6)
-                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
-                    .addComponent(jPanel3, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
-                        .addComponent(jScrollPane1)
-                        .addComponent(jPanel1, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)))
-                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                .addGap(191, 191, 191)
+                .addComponent(jPanel3, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addContainerGap(8, Short.MAX_VALUE))
+            .addGroup(layout.createSequentialGroup()
+                .addContainerGap()
+                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addComponent(jPanel2, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                    .addComponent(jPanel1, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                .addContainerGap())
         );
         layout.setVerticalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(layout.createSequentialGroup()
-                .addGap(6, 6, 6)
+                .addContainerGap()
                 .addComponent(jPanel1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addComponent(jPanel3, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(jScrollPane1, javax.swing.GroupLayout.DEFAULT_SIZE, 401, Short.MAX_VALUE)
+                .addComponent(jPanel2, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                 .addContainerGap())
         );
 
@@ -335,6 +486,8 @@ public class Apostadores extends javax.swing.JDialog {
         int selectedRow = tblApostadores.getSelectedRow();
         if (selectedRow != -1) {
             if (evt.getClickCount() == 1) {
+                btnModificar.setEnabled(true);
+
                 int select = tblApostadores.rowAtPoint(evt.getPoint());
                 tblApostadores.setRowSelectionInterval(select, select);
 
@@ -343,19 +496,20 @@ public class Apostadores extends javax.swing.JDialog {
                 txtNumero.setText(String.valueOf(tblApostadores.getValueAt(select, 0)));
                 txtCedula.setText(String.valueOf(tblApostadores.getValueAt(select, 1)));
                 txtNombre.setText(String.valueOf(tblApostadores.getValueAt(select, 2)));
-                atxtObservacion.setText(String.valueOf(tblApostadores.getValueAt(select, 3)));
+                txtSaldo.setText(String.valueOf(tblApostadores.getValueAt(select, 3)));
+                atxtObservacion.setText(String.valueOf(tblApostadores.getValueAt(select, 4)));
 
-                if ("activo".equals(tblApostadores.getValueAt(select, 4).toString())) {
+                if ("activo".equals(tblApostadores.getValueAt(select, 5).toString())) {
                     chbActive.setSelected(true);
-                    initialState = tblApostadores.getValueAt(select, 4).toString();
+                    initialState = tblApostadores.getValueAt(select, 5).toString();
                 } else {
                     chbActive.setSelected(false);
-                    initialState = tblApostadores.getValueAt(select, 4).toString();
+                    initialState = tblApostadores.getValueAt(select, 5).toString();
                 }
             } else if (evt.getClickCount() == 2) {
                 int idApostador = Integer.parseInt(txtNumero.getText());
 
-                if (!controller.tieneHistorial(idApostador)) {
+                if (!controller.tieneHistorial(idApostador, desde, hasta)) {
                     JOptionPane.showMessageDialog(
                             this,
                             "No hay historial del apostador.",
@@ -426,6 +580,263 @@ public class Apostadores extends javax.swing.JDialog {
         }
     }//GEN-LAST:event_atxtObservacionKeyPressed
 
+    private void txtSaldoKeyPressed(java.awt.event.KeyEvent evt) {//GEN-FIRST:event_txtSaldoKeyPressed
+
+    }//GEN-LAST:event_txtSaldoKeyPressed
+
+    private void txtSaldoKeyTyped(java.awt.event.KeyEvent evt) {//GEN-FIRST:event_txtSaldoKeyTyped
+
+    }//GEN-LAST:event_txtSaldoKeyTyped
+
+    private void btnModificarActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnModificarActionPerformed
+        AgregarSaldo dialog = new AgregarSaldo(f, true);
+        AgregarSaldo.txtApostadores.setText(txtNombre.getText());
+        AgregarSaldo.txtMontoactual.setText(txtSaldo.getText());
+        AgregarSaldo.txtIdapostadores.setText(txtIdapostadores.getText());
+        AgregarSaldo.txtDestino.setText("Apostadores");
+        dialog.setVisible(true);
+
+    }//GEN-LAST:event_btnModificarActionPerformed
+
+    private void txtSaldoKeyReleased(java.awt.event.KeyEvent evt) {//GEN-FIRST:event_txtSaldoKeyReleased
+        if (evt.getKeyCode() == KeyEvent.VK_ENTER) {
+            txtSaldo.transferFocus();
+            atxtObservacion.requestFocus();
+        }
+    }//GEN-LAST:event_txtSaldoKeyReleased
+
+    private void btnActualizarOcultoActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnActualizarOcultoActionPerformed
+        limpiar();
+        txtNumero.setText(String.valueOf(controller.getMaxCodigo()));
+        txtNombre.requestFocus();
+        btnModificar.setEnabled(false);
+        showApostadores("", stateFilter);
+    }//GEN-LAST:event_btnActualizarOcultoActionPerformed
+
+    private void btnImprimirActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnImprimirActionPerformed
+        try {
+            DateTimeFormatter fmt = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+            String currentdate = LocalDate.now().format(fmt);
+
+            URL logoURL = getClass().getResource("/Images/icono5.png");
+            String rutaLogo = "";
+            if (logoURL == null) {
+                throw new FileNotFoundException("No se encontró /Images/icono5.png");
+            } else {
+                rutaLogo = logoURL.toString();
+            }
+
+            URL camaraURL = getClass().getResource("/Images/camara16.png");
+            String rutaAbsoluta = "";
+            if (camaraURL == null) {
+                throw new FileNotFoundException("No se encontró /Images/camara16.png");
+            } else {
+                rutaAbsoluta = camaraURL.toString();
+            }
+
+            String ruta = AppPaths.REPORTS_DIR + File.separator + "Apostadores.jrxml";
+            File jrxmlFile = new File(ruta);
+            InputStream is = new FileInputStream(jrxmlFile);
+            if (!jrxmlFile.exists()) {
+                throw new FileNotFoundException("No se encontró el .jrxml en: " + ruta);
+            }
+
+            DefaultTableModel original = (DefaultTableModel) tblApostadores.getModel();
+            int[] colsNoPermitidas = {0};
+            List<Integer> colsPermitidas = new ArrayList<>();
+            outer:
+            for (int col = 0; col < original.getColumnCount(); col++) {
+                for (int no : colsNoPermitidas) {
+                    if (col == no) {
+                        continue outer;
+                    }
+                }
+                colsPermitidas.add(col);
+            }
+            DefaultTableModel filtrado = new DefaultTableModel();
+            for (int colIndex : colsPermitidas) {
+                filtrado.addColumn(original.getColumnName(colIndex));
+            }
+            for (int row = 0; row < original.getRowCount(); row++) {
+                Object[] fila = new Object[colsPermitidas.size()];
+                for (int i = 0; i < colsPermitidas.size(); i++) {
+                    fila[i] = original.getValueAt(row, colsPermitidas.get(i));
+                }
+                filtrado.addRow(fila);
+            }
+
+            JRTableModelDataSource datasource = new JRTableModelDataSource(filtrado);
+            JasperReport jr = JasperCompileManager.compileReport(is);
+
+            Map<String, Object> params = new HashMap<>();
+            params.put("Logo", rutaLogo);
+            params.put("Currentdate", currentdate);
+
+            final JasperPrint jasperPrint = JasperFillManager.fillReport(jr, params, datasource);
+
+            if (jasperPrint.getPages() == null || jasperPrint.getPages().isEmpty()) {
+                JOptionPane.showMessageDialog(
+                        this,
+                        "No hay nada en la tabla para mostrar",
+                        "Tabla vacía",
+                        JOptionPane.WARNING_MESSAGE
+                );
+                return;
+            }
+
+            JasperViewer jasperViewer = new JasperViewer(jasperPrint, false);
+            Container viewerContent = jasperViewer.getContentPane();
+            JPanel mainPanel = (JPanel) viewerContent.getComponent(0);
+            JRViewer jrViewer = (JRViewer) mainPanel.getComponent(0);
+            JRViewerToolbar toolbar = (JRViewerToolbar) jrViewer.getComponent(0);
+
+            JButton btnSavee = (JButton) toolbar.getComponent(0);
+            JButton btnPrint = (JButton) toolbar.getComponent(1);
+            btnSavee.setText("Guardar");
+            btnSavee.setPreferredSize(new Dimension(75, 30));
+            btnPrint.setText("Imprimir");
+            btnPrint.setPreferredSize(new Dimension(75, 30));
+
+            ImageIcon camaraIcon = new ImageIcon(rutaAbsoluta);
+            JButton btnImagen = new JButton("PNG");
+            btnImagen.setToolTipText("Guardar reporte como imagen");
+            btnImagen.setIcon(camaraIcon);
+            btnImagen.setPreferredSize(new Dimension(75, 30));
+            btnImagen.addActionListener(e -> {
+                JFileChooser chooser = new JFileChooser();
+                chooser.setDialogTitle("Guardar reporte como PNG");
+                chooser.setFileSelectionMode(JFileChooser.FILES_ONLY);//Sólo archivos
+                chooser.setAcceptAllFileFilterUsed(false);//No permitir “Todos los archivos”
+                FileNameExtensionFilter pngFilter = new FileNameExtensionFilter("PNG (*.png)", "png");//Filtro de sólo PNG
+                chooser.addChoosableFileFilter(pngFilter);
+                chooser.setFileFilter(pngFilter);
+
+                chooser.setApproveButtonText("Guardar");//Texto del botón en español
+                chooser.setApproveButtonToolTipText("Guardar reporte en imágenes PNG");
+
+                //Mostrar el dialogo
+                if (chooser.showSaveDialog(this) == JFileChooser.APPROVE_OPTION) {
+                    File selected = chooser.getSelectedFile();
+                    String path = selected.getAbsolutePath();
+                    if (!path.toLowerCase().endsWith(".png")) {
+                        path += ".png";
+                        selected = new File(path);
+                    }
+
+                    //Generar y guardar cada pagina
+                    int total = jasperPrint.getPages().size();
+                    float zoomm = 1.0f;
+                    for (int i = 0; i < total; i++) {
+                        try {
+                            Image img = JasperPrintManager.printPageToImage(jasperPrint, i, zoomm);
+                            BufferedImage bimg = new BufferedImage(
+                                    img.getWidth(null), img.getHeight(null),
+                                    BufferedImage.TYPE_INT_ARGB
+                            );
+                            Graphics2D g = bimg.createGraphics();
+                            g.drawImage(img, 0, 0, null);
+                            g.dispose();
+
+                            String baseName = selected.getName();
+                            baseName = baseName.replaceAll("(?i)\\.png$", "");
+                            File outFile = new File(
+                                    selected.getParentFile(),
+                                    baseName + "_" + (i + 1) + ".png"
+                            );
+
+                            ImageIO.write(bimg, "png", outFile);
+                        } catch (JRException | IOException ex) {
+                            ex.printStackTrace();
+                        }
+                    }
+                }
+            });
+
+            Component[] originales = toolbar.getComponents();
+
+            toolbar.removeAll();
+
+            toolbar.add(btnPrint);
+            toolbar.add(Box.createRigidArea(new Dimension(3, 0)));
+            toolbar.add(btnSavee);
+            toolbar.add(Box.createRigidArea(new Dimension(3, 0)));
+            toolbar.add(btnImagen);
+            toolbar.add(Box.createRigidArea(new Dimension(3, 0)));
+
+            for (Component c : originales) {
+                if (c == btnPrint || c == btnSavee /*|| c == btnImagen?*/) {
+                    continue;
+                }
+                toolbar.add(c);
+                toolbar.add(Box.createRigidArea(new Dimension(2, 0)));
+            }
+
+            toolbar.revalidate();
+            toolbar.repaint();
+
+            JDialog dialog = new JDialog((Frame) null, "Apostadores", true);
+            dialog.setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
+            dialog.getContentPane().add(
+                    jasperViewer.getContentPane(), BorderLayout.CENTER
+            );
+
+            dialog.setSize(Toolkit.getDefaultToolkit().getScreenSize());
+            dialog.setLocationRelativeTo(null);
+            dialog.setVisible(true);
+
+        } catch (JRException ex) {
+            ex.printStackTrace();
+        } catch (FileNotFoundException ex) {
+            Logger.getLogger(PerfilApostador.class.getName()).log(Level.SEVERE, null, ex);
+        }
+    }//GEN-LAST:event_btnImprimirActionPerformed
+
+    private void btnExcelActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnExcelActionPerformed
+        DefaultTableModel model = (DefaultTableModel) tblApostadores.getModel();
+        if (model.getRowCount() == 0) {
+            JOptionPane.showMessageDialog(this,
+                    "La tabla está vacía. No se puede exportar un Excel sin datos.",
+                    "Tabla vacía",
+                    JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        Set<Integer> columnsToSkip = Set.of(1, 5);
+
+        JFileChooser chooser = new JFileChooser();
+        chooser.setDialogTitle("Guardar Excel");
+        chooser.setApproveButtonText("Guardar");
+        // Filtro opcional para que solo se muestre .xlsx
+        chooser.setFileFilter(new FileNameExtensionFilter("Excel Workbook (*.xlsx)", "xlsx"));
+        chooser.setSelectedFile(new File("Apostadores.xlsx"));
+
+        int opcion = chooser.showSaveDialog(this);
+        if (opcion != JFileChooser.APPROVE_OPTION) {
+            return;  // cancelado
+        }
+
+        File destino = chooser.getSelectedFile();
+        if (!destino.getName().toLowerCase().endsWith(".xlsx")) {
+            destino = new File(destino.getParentFile(), destino.getName() + ".xlsx");
+        }
+
+        try {
+            Export_Excel.export(tblApostadores,
+                    "Apostadores",
+                    destino.getAbsolutePath(),
+                    columnsToSkip);
+            // Abrir automáticamente
+            if (Desktop.isDesktopSupported()) {
+                Desktop.getDesktop().open(destino);
+            }
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(this,
+                    "Error al exportar:\n" + ex.getMessage(),
+                    "Error", JOptionPane.ERROR_MESSAGE);
+            ex.printStackTrace();
+        }
+    }//GEN-LAST:event_btnExcelActionPerformed
+
     Frame f = JOptionPane.getFrameForComponent(this);
 
     /**
@@ -483,11 +894,19 @@ public class Apostadores extends javax.swing.JDialog {
         if (atxtObservacion.getText().length() == 0) {
             atxtObservacion.setText("Sin datos");
         }
+
+        if (txtSaldo.getText().length() == 0) {
+            txtSaldo.setText("0");
+        }
     }
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JTextArea atxtObservacion;
+    public static javax.swing.JButton btnActualizarOculto;
     private javax.swing.JButton btnCancel;
+    private javax.swing.JButton btnExcel;
+    private javax.swing.JButton btnImprimir;
+    private javax.swing.JButton btnModificar;
     private javax.swing.JButton btnSave;
     private javax.swing.JCheckBox chbActive;
     private javax.swing.JComboBox<String> cmbEstado;
@@ -496,18 +915,22 @@ public class Apostadores extends javax.swing.JDialog {
     private javax.swing.JLabel jLabel2;
     private javax.swing.JLabel jLabel3;
     private javax.swing.JLabel jLabel4;
+    private javax.swing.JLabel jLabel5;
     private javax.swing.JLabel jLabel6;
     private javax.swing.JPanel jPanel1;
+    private javax.swing.JPanel jPanel2;
     private javax.swing.JPanel jPanel3;
     private javax.swing.JScrollPane jScrollPane1;
     private javax.swing.JScrollPane jScrollPane3;
     private javax.swing.JSeparator jSeparator1;
+    private javax.swing.JSeparator jSeparator2;
     private javax.swing.JTable tblApostadores;
     private javax.swing.JTextField txtBuscar;
     private javax.swing.JTextField txtCedula;
     private javax.swing.JTextField txtIdapostadores;
     private javax.swing.JTextField txtNombre;
     private javax.swing.JTextField txtNumero;
+    public static javax.swing.JTextField txtSaldo;
     // End of variables declaration//GEN-END:variables
 
     private void save(String cedula, String nombre, String observacion) {
@@ -519,7 +942,8 @@ public class Apostadores extends javax.swing.JDialog {
         JOptionPane.showMessageDialog(null, "Apostador ingresado exitosamente!", "Hecho!", JOptionPane.INFORMATION_MESSAGE);
         limpiar();
         txtNumero.setText(String.valueOf(controller.getMaxCodigo()));
-        txtCedula.requestFocus();
+        txtNombre.requestFocus();
+        btnModificar.setEnabled(false);
         showApostadores("", stateFilter);
     }
 
@@ -573,7 +997,8 @@ public class Apostadores extends javax.swing.JDialog {
         JOptionPane.showMessageDialog(null, "Apostador actualizado exitosamente!", "Hecho!", JOptionPane.INFORMATION_MESSAGE);
         limpiar();
         txtNumero.setText(String.valueOf(controller.getMaxCodigo()));
-        txtCedula.requestFocus();
+        txtNombre.requestFocus();
+        btnModificar.setEnabled(false);
         showApostadores("", stateFilter);
     }
 }

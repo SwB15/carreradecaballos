@@ -18,16 +18,24 @@ public class Apostadores_Services {
     public boolean updateApostadores(Apostadores_Model model) {
         return Apostadores_repository.update(model);
     }
+    
+    public boolean addSaldo(Apostadores_Model model) {
+        return Apostadores_repository.addSaldo(model);
+    }
 
     public DefaultTableModel showApostadores(String search, String stateFilter) {
         return Apostadores_repository.showApostadores(search, stateFilter);
     }
-    
-    public DefaultTableModel showHistorial(int id) {
-        return Apostadores_repository.showHistorial(id);
+
+    public DefaultTableModel showHistorial(int id, String desde, String hasta) {
+        return Apostadores_repository.showHistorial(id, desde, hasta);
     }
-    
+
     public int getMaxCodigo() {
         return Apostadores_repository.getMaxCodigo();
+    }
+    
+    public int getSaldo(int idapostadores) {
+        return Apostadores_repository.getSaldo(idapostadores);
     }
 }

@@ -13,10 +13,11 @@ public class Carreras_Controller {
     public Carreras_Controller() {
     }
 
-    public boolean createCarreras(String nombre, String lugar, String Fecha, String observacion, int foreignKey) {
+    public boolean createCarreras(String nombre, String lugar, String Fecha, Integer idganador, String observacion, int foreignKey) {
         model.setNombre(nombre);
         model.setLugar(lugar);
         model.setFecha(Fecha);
+        model.setIdganador(idganador);
         model.setObservacion(observacion);
         model.setFk_estados(foreignKey);
         return services.addCarreras(model);
@@ -36,15 +37,23 @@ public class Carreras_Controller {
     public int getMaxCodigo() {
         return services.getMaxCodigo();
     }
+    
+    public int getIdganador(Integer idcarreras) {
+        return services.getIdganador(idcarreras);
+    }
 
     public DefaultTableModel showCarreras(String search, String fase, String stateFilter) {
         return services.showCarreras(search, fase, stateFilter);
     }
-    
-    public DefaultTableModel showCarrerasInPrincipal(String search, String statusFilter) {
-        return services.showCarrerasInPrincipal(search, statusFilter);
+
+    public DefaultTableModel showCarrerasInPrincipal(String search, String stateFilter, String statusFilter, String datefrom, String dateto) {
+        return services.showCarrerasInPrincipal(search, stateFilter, statusFilter, datefrom, dateto);
     }
-    
+
+    public DefaultTableModel showCarrerasForEdit(String search, String statusFilter) {
+        return services.showCarrerasForEdit(search, statusFilter);
+    }
+
     public DefaultTableModel showCaballosInCarreras(String search) {
         return services.showCaballosInCarreras(search);
     }

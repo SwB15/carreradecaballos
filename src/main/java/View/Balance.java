@@ -1,14 +1,58 @@
 package View;
 
+import Config.AppPaths;
+import Config.Export_Excel;
 import Controller.Balance_Controller;
+import java.awt.BorderLayout;
 import java.awt.Color;
+import java.awt.Component;
+import java.awt.Container;
+import java.awt.Desktop;
+import java.awt.Dimension;
+import java.awt.Frame;
+import java.awt.Graphics2D;
+import java.awt.Image;
+import java.awt.Toolkit;
 import java.awt.event.ActionEvent;
+import java.awt.image.BufferedImage;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.InputStream;
+import java.net.URL;
+import java.nio.file.Paths;
 import java.text.DecimalFormat;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+import javax.imageio.ImageIO;
+import javax.swing.Box;
+import javax.swing.ImageIcon;
+import javax.swing.JButton;
+import javax.swing.JDialog;
+import javax.swing.JFileChooser;
 import javax.swing.JOptionPane;
+import javax.swing.JPanel;
 import javax.swing.JTable;
+import javax.swing.filechooser.FileNameExtensionFilter;
 import javax.swing.table.DefaultTableModel;
+import net.sf.jasperreports.engine.JRException;
+import net.sf.jasperreports.engine.JasperCompileManager;
+import net.sf.jasperreports.engine.JasperFillManager;
+import net.sf.jasperreports.engine.JasperPrint;
+import net.sf.jasperreports.engine.JasperPrintManager;
+import net.sf.jasperreports.engine.JasperReport;
+import net.sf.jasperreports.engine.data.JRTableModelDataSource;
+import net.sf.jasperreports.swing.JRViewer;
+import net.sf.jasperreports.swing.JRViewerToolbar;
+import net.sf.jasperreports.view.JasperViewer;
 
 /**
  *
@@ -19,6 +63,8 @@ public class Balance extends javax.swing.JDialog {
     Balance_Controller controller = new Balance_Controller();
     DecimalFormat formateador14 = new DecimalFormat("#,###.###");
     private HashMap<String, String> CarrerasMap;
+    DateTimeFormatter fmt = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+    String currentdate = LocalDate.now().format(fmt);
 
     public Balance(java.awt.Frame parent, boolean modal) {
         super(parent, modal);
@@ -35,28 +81,13 @@ public class Balance extends javax.swing.JDialog {
         txtPerdedores.setBackground(Color.white);
         txtTotalPagado.setEditable(false);
         txtTotalPagado.setBackground(Color.white);
+        txtGanancias.setEditable(false);
         carrerasCombobox();
-        btnPrint.setEnabled(false);
     }
 
     private void showResultados(int idcarreras) {
         try {
             DefaultTableModel model = controller.showResultados(idcarreras);
-            model.addColumn("Monto Neto");
-
-            // Recorrer filas y calcular el monto neto para los ganadores y perdedores
-            for (int i = 0; i < model.getRowCount(); i++) {
-                String resultado = model.getValueAt(i, 5).toString();
-                int monto = Integer.parseInt(model.getValueAt(i, 3).toString());
-
-                if (resultado.equalsIgnoreCase("Ganador")) {
-                    int montoNeto = (monto * 90) / 100; // 90% del monto para el ganador
-                    model.setValueAt(formateador14.format(montoNeto), i, 6);
-                } else {
-                    model.setValueAt(formateador14.format(-monto), i, 6); // Monto negativo si es perdedor
-                }
-            }
-
             tblBalance.setModel(model);
             ocultar_columnas(tblBalance);
             calcularResultados();
@@ -119,38 +150,45 @@ public class Balance extends javax.swing.JDialog {
     }
 
     private void calcularResultados() {
-        int ganadores = 0;
-        int perdedores = 0;
-        int totalGanancias = 0;
-        int totalApostado = 0;
-        int totalPagado = 0;
-        int apuestas = 0;
-
         DefaultTableModel model = (DefaultTableModel) tblBalance.getModel();
 
-        for (int i = 0; i < model.getRowCount(); i++) {
-            apuestas++;
-            String resultado = model.getValueAt(i, 5).toString(); // Columna "Resultado"
-            int monto = Integer.parseInt(model.getValueAt(i, 3).toString().replace(".", "")); // Columna "Monto"
+        int totalApostadores = model.getRowCount();
+        int ganadores = 0;
+        int perdedores = 0;
+        long sumApostado = 0;
+        long sumComision = 0;
+        long sumPagado = 0;
 
-            totalApostado += monto; // Suma total de apuestas
+        for (int i = 0; i < totalApostadores; i++) {
+            // extraemos los Strings formateados
+            String sTotalApo = model.getValueAt(i, 3).toString();
+            String sPool = model.getValueAt(i, 4).toString();
+            String sComision = model.getValueAt(i, 5).toString();
+            String sMontoNeto = model.getValueAt(i, 6).toString();
 
-            if (resultado.equalsIgnoreCase("Ganador")) {
+            // quitamos separadores de miles (puntos o comas)
+            long totalApo = Long.parseLong(sTotalApo.replace(".", "").replace(",", ""));
+            long pool = Long.parseLong(sPool.replace(".", "").replace(",", ""));
+            long comision = Long.parseLong(sComision.replace(".", "").replace(",", ""));
+            long montoNeto = Long.parseLong(sMontoNeto.replace(".", "").replace(",", ""));
+
+            sumApostado += totalApo;
+            sumComision += comision;
+            if (montoNeto > 0) {
                 ganadores++;
-                totalGanancias += monto * 0.1; // Comisión del 10%
-                totalPagado += monto - totalGanancias;
-            } else if (resultado.equalsIgnoreCase("Perdedor")) {
+                sumPagado += montoNeto;
+            } else {
                 perdedores++;
             }
         }
 
-        // Cargar los valores en los JTextField
-        txtApuestas.setText(formateador14.format(apuestas));
+        // ahora sí, volvemos a formatear para mostrar en los JTextField
+        txtApuestas.setText(formateador14.format(totalApostadores));
         txtGanadores.setText(formateador14.format(ganadores));
         txtPerdedores.setText(formateador14.format(perdedores));
-        txtGanancias.setText(formateador14.format(totalGanancias));
-        txtTotalApostado.setText(formateador14.format(totalApostado));
-        txtTotalPagado.setText(formateador14.format(totalPagado));
+        txtTotalApostado.setText(formateador14.format(sumApostado));
+        txtGanancias.setText(formateador14.format(sumComision));
+        txtTotalPagado.setText(formateador14.format(sumPagado));
     }
 
     @SuppressWarnings("unchecked")
@@ -158,8 +196,7 @@ public class Balance extends javax.swing.JDialog {
     private void initComponents() {
 
         jPanel1 = new javax.swing.JPanel();
-        btnCancel = new javax.swing.JButton();
-        jButton1 = new javax.swing.JButton();
+        btnCancelar = new javax.swing.JButton();
         txtGanancias = new javax.swing.JTextField();
         jLabel3 = new javax.swing.JLabel();
         jLabel4 = new javax.swing.JLabel();
@@ -176,7 +213,9 @@ public class Balance extends javax.swing.JDialog {
         txtApuestas = new javax.swing.JTextField();
         jLabel9 = new javax.swing.JLabel();
         jSeparator1 = new javax.swing.JSeparator();
-        btnPrint = new javax.swing.JButton();
+        btnImprimir = new javax.swing.JButton();
+        btnExcel = new javax.swing.JButton();
+        jPanel2 = new javax.swing.JPanel();
         jScrollPane2 = new javax.swing.JScrollPane();
         tblBalance = new javax.swing.JTable();
 
@@ -185,9 +224,12 @@ public class Balance extends javax.swing.JDialog {
 
         jPanel1.setBorder(javax.swing.BorderFactory.createBevelBorder(javax.swing.border.BevelBorder.RAISED));
 
-        btnCancel.setText("Cancel");
-
-        jButton1.setText("Guardar");
+        btnCancelar.setText("Cancelar");
+        btnCancelar.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                btnCancelarActionPerformed(evt);
+            }
+        });
 
         txtGanancias.setBackground(new java.awt.Color(153, 255, 0));
         txtGanancias.setFont(new java.awt.Font("Segoe UI", 1, 18)); // NOI18N
@@ -197,10 +239,13 @@ public class Balance extends javax.swing.JDialog {
 
         jLabel3.setText("Mis Ganancias:");
 
+        jLabel4.setHorizontalAlignment(javax.swing.SwingConstants.RIGHT);
         jLabel4.setText("Perdedores:");
 
+        jLabel5.setHorizontalAlignment(javax.swing.SwingConstants.RIGHT);
         jLabel5.setText("Ganadores:");
 
+        jLabel6.setHorizontalAlignment(javax.swing.SwingConstants.RIGHT);
         jLabel6.setText("Carrera:");
 
         cmbCarreras.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "Item 1", "Item 2", "Item 3", "Item 4" }));
@@ -209,9 +254,22 @@ public class Balance extends javax.swing.JDialog {
 
         jLabel8.setText("Tot. Pagado:");
 
+        jLabel9.setHorizontalAlignment(javax.swing.SwingConstants.RIGHT);
         jLabel9.setText("Apuestas:");
 
-        btnPrint.setText("Imprimir");
+        btnImprimir.setIcon(new javax.swing.ImageIcon(getClass().getResource("/Images/print_icon16.png"))); // NOI18N
+        btnImprimir.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                btnImprimirActionPerformed(evt);
+            }
+        });
+
+        btnExcel.setIcon(new javax.swing.ImageIcon(getClass().getResource("/Images/excel_icon16.png"))); // NOI18N
+        btnExcel.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                btnExcelActionPerformed(evt);
+            }
+        });
 
         javax.swing.GroupLayout jPanel1Layout = new javax.swing.GroupLayout(jPanel1);
         jPanel1.setLayout(jPanel1Layout);
@@ -224,28 +282,26 @@ public class Balance extends javax.swing.JDialog {
                     .addGroup(jPanel1Layout.createSequentialGroup()
                         .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                             .addGroup(jPanel1Layout.createSequentialGroup()
-                                .addGap(4, 4, 4)
-                                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
-                                    .addComponent(jLabel6)
-                                    .addComponent(jLabel5)
-                                    .addComponent(jLabel4)
-                                    .addComponent(jLabel9))
+                                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
+                                    .addComponent(jLabel4, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                                    .addComponent(jLabel5, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                                    .addComponent(jLabel9, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                                    .addComponent(jLabel6, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
                                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                                 .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                                    .addComponent(txtPerdedores, javax.swing.GroupLayout.PREFERRED_SIZE, 100, javax.swing.GroupLayout.PREFERRED_SIZE)
                                     .addComponent(txtGanadores, javax.swing.GroupLayout.PREFERRED_SIZE, 100, javax.swing.GroupLayout.PREFERRED_SIZE)
                                     .addComponent(cmbCarreras, javax.swing.GroupLayout.PREFERRED_SIZE, 250, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                    .addComponent(txtApuestas, javax.swing.GroupLayout.PREFERRED_SIZE, 100, javax.swing.GroupLayout.PREFERRED_SIZE)))
+                                    .addComponent(txtApuestas, javax.swing.GroupLayout.PREFERRED_SIZE, 100, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                    .addComponent(txtPerdedores, javax.swing.GroupLayout.PREFERRED_SIZE, 100, javax.swing.GroupLayout.PREFERRED_SIZE)))
                             .addGroup(jPanel1Layout.createSequentialGroup()
-                                .addComponent(btnPrint)
-                                .addGap(166, 166, 166)
-                                .addComponent(txtIdcarreras, javax.swing.GroupLayout.PREFERRED_SIZE, 39, javax.swing.GroupLayout.PREFERRED_SIZE)))
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 68, Short.MAX_VALUE)
-                        .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, jPanel1Layout.createSequentialGroup()
-                                .addComponent(jButton1)
+                                .addComponent(btnImprimir, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)
                                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                .addComponent(btnCancel))
+                                .addComponent(btnExcel, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                .addGap(156, 156, 156)
+                                .addComponent(txtIdcarreras, javax.swing.GroupLayout.PREFERRED_SIZE, 39, javax.swing.GroupLayout.PREFERRED_SIZE)))
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 72, Short.MAX_VALUE)
+                        .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                            .addComponent(btnCancelar, javax.swing.GroupLayout.Alignment.TRAILING)
                             .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, jPanel1Layout.createSequentialGroup()
                                 .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                                     .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, jPanel1Layout.createSequentialGroup()
@@ -293,13 +349,16 @@ public class Balance extends javax.swing.JDialog {
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addComponent(jSeparator1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(jButton1)
-                    .addComponent(btnCancel)
-                    .addComponent(txtIdcarreras, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(btnPrint))
+                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                        .addComponent(btnCancelar)
+                        .addComponent(txtIdcarreras, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                    .addComponent(btnImprimir)
+                    .addComponent(btnExcel))
                 .addContainerGap())
         );
+
+        jPanel2.setBorder(javax.swing.BorderFactory.createBevelBorder(javax.swing.border.BevelBorder.RAISED));
 
         tblBalance = new javax.swing.JTable(){
             public boolean isCellEditable(int rowIndex, int colIndex) {
@@ -319,6 +378,23 @@ public class Balance extends javax.swing.JDialog {
         ));
         jScrollPane2.setViewportView(tblBalance);
 
+        javax.swing.GroupLayout jPanel2Layout = new javax.swing.GroupLayout(jPanel2);
+        jPanel2.setLayout(jPanel2Layout);
+        jPanel2Layout.setHorizontalGroup(
+            jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(jPanel2Layout.createSequentialGroup()
+                .addContainerGap()
+                .addComponent(jScrollPane2)
+                .addContainerGap())
+        );
+        jPanel2Layout.setVerticalGroup(
+            jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(jPanel2Layout.createSequentialGroup()
+                .addContainerGap()
+                .addComponent(jScrollPane2, javax.swing.GroupLayout.DEFAULT_SIZE, 386, Short.MAX_VALUE)
+                .addContainerGap())
+        );
+
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
         getContentPane().setLayout(layout);
         layout.setHorizontalGroup(
@@ -327,7 +403,7 @@ public class Balance extends javax.swing.JDialog {
                 .addContainerGap()
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                     .addComponent(jPanel1, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                    .addComponent(jScrollPane2, javax.swing.GroupLayout.Alignment.TRAILING))
+                    .addComponent(jPanel2, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
                 .addContainerGap())
         );
         layout.setVerticalGroup(
@@ -336,12 +412,271 @@ public class Balance extends javax.swing.JDialog {
                 .addContainerGap()
                 .addComponent(jPanel1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(jScrollPane2)
+                .addComponent(jPanel2, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                 .addContainerGap())
         );
 
         pack();
     }// </editor-fold>//GEN-END:initComponents
+
+    private void btnImprimirActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnImprimirActionPerformed
+        try {
+            DateTimeFormatter fmt = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+            String currentdate = LocalDate.now().format(fmt);
+
+            URL logoURL = getClass().getResource("/Images/icono5.png");
+            String rutaLogo = "";
+            if (logoURL == null) {
+                throw new FileNotFoundException("No se encontró /Images/icono5.png");
+            } else {
+                rutaLogo = logoURL.toString();
+            }
+
+            URL camaraURL = getClass().getResource("/Images/camara16.png");
+            String rutaAbsoluta = "";
+            if (camaraURL == null) {
+                throw new FileNotFoundException("No se encontró /Images/camara16.png");
+            } else {
+                rutaAbsoluta = camaraURL.toString();
+            }
+
+            String ruta = AppPaths.REPORTS_DIR + File.separator + "Balance.jrxml";
+            File jrxmlFile = new File(ruta);
+            InputStream is = new FileInputStream(jrxmlFile);
+            if (!jrxmlFile.exists()) {
+                throw new FileNotFoundException("No se encontró el .jrxml en: " + ruta);
+            }
+
+            DefaultTableModel original = (DefaultTableModel) tblBalance.getModel();
+            int[] colsNoPermitidas = {0, 2};
+            List<Integer> colsPermitidas = new ArrayList<>();
+            outer:
+            for (int col = 0; col < original.getColumnCount(); col++) {
+                for (int no : colsNoPermitidas) {
+                    if (col == no) {
+                        continue outer;
+                    }
+                }
+                colsPermitidas.add(col);
+            }
+            DefaultTableModel filtrado = new DefaultTableModel();
+            for (int colIndex : colsPermitidas) {
+                filtrado.addColumn(original.getColumnName(colIndex));
+            }
+            for (int row = 0; row < original.getRowCount(); row++) {
+                Object[] fila = new Object[colsPermitidas.size()];
+                for (int i = 0; i < colsPermitidas.size(); i++) {
+                    fila[i] = original.getValueAt(row, colsPermitidas.get(i));
+                }
+                filtrado.addRow(fila);
+            }
+
+            String ganancias = "";
+            String[] opciones = {"Sí", "No"};
+            int respuesta = JOptionPane.showOptionDialog(
+                    this,
+                    "Mostrar también las ganancias como gestor?",
+                    "Selecciona",
+                    JOptionPane.YES_NO_OPTION,
+                    JOptionPane.QUESTION_MESSAGE,
+                    null, opciones, opciones[1]
+            );
+
+            if (respuesta == JOptionPane.YES_OPTION) {
+                ganancias = "Mis ganancias: " + txtGanancias.getText() + " gs.";
+            }
+
+            JRTableModelDataSource datasource = new JRTableModelDataSource(filtrado);
+            JasperReport jr = JasperCompileManager.compileReport(is);
+
+            Map<String, Object> params = new HashMap<>();
+            params.put("Logo", rutaLogo);
+            params.put("Currentdate", currentdate);
+            params.put("Carrera", cmbCarreras.getSelectedItem());
+            params.put("Apuestas", txtApuestas.getText());
+            params.put("Ganadores", txtGanadores.getText());
+            params.put("Perdedores", txtPerdedores.getText());
+            params.put("Totalapostado", txtTotalApostado.getText());
+            params.put("Totalpagado", txtTotalPagado.getText());
+            params.put("Misganancias", ganancias);
+
+            final JasperPrint jasperPrint = JasperFillManager.fillReport(jr, params, datasource);
+
+            if (jasperPrint.getPages() == null || jasperPrint.getPages().isEmpty()) {
+                JOptionPane.showMessageDialog(
+                        this,
+                        "No hay nada en la tabla para mostrar",
+                        "Tabla vacía",
+                        JOptionPane.WARNING_MESSAGE
+                );
+                return;
+            }
+
+            JasperViewer jasperViewer = new JasperViewer(jasperPrint, false);
+            Container viewerContent = jasperViewer.getContentPane();
+            JPanel mainPanel = (JPanel) viewerContent.getComponent(0);
+            JRViewer jrViewer = (JRViewer) mainPanel.getComponent(0);
+            JRViewerToolbar toolbar = (JRViewerToolbar) jrViewer.getComponent(0);
+
+            JButton btnSave = (JButton) toolbar.getComponent(0);
+            JButton btnPrint = (JButton) toolbar.getComponent(1);
+            btnSave.setText("Guardar");
+            btnSave.setPreferredSize(new Dimension(75, 30));
+            btnPrint.setText("Imprimir");
+            btnPrint.setPreferredSize(new Dimension(75, 30));
+
+            ImageIcon camaraIcon = new ImageIcon(rutaAbsoluta);
+            JButton btnImagen = new JButton("PNG");
+            btnImagen.setToolTipText("Guardar reporte como imagen");
+            btnImagen.setIcon(camaraIcon);
+            btnImagen.setPreferredSize(new Dimension(75, 30));
+            btnImagen.addActionListener(e -> {
+                JFileChooser chooser = new JFileChooser();
+                chooser.setDialogTitle("Guardar reporte como PNG");
+                chooser.setFileSelectionMode(JFileChooser.FILES_ONLY); //Sólo archivos
+                chooser.setAcceptAllFileFilterUsed(false); //No permitir “Todos los archivos”
+                FileNameExtensionFilter pngFilter = new FileNameExtensionFilter("PNG (*.png)", "png"); // Filtro de sólo PNG
+                chooser.addChoosableFileFilter(pngFilter);
+                chooser.setFileFilter(pngFilter);
+                chooser.setApproveButtonText("Guardar"); //Texto del botón en español
+                chooser.setApproveButtonToolTipText("Guardar reporte en imágenes PNG");
+
+                if (chooser.showSaveDialog(this) == JFileChooser.APPROVE_OPTION) {
+                    File selected = chooser.getSelectedFile();
+                    String path = selected.getAbsolutePath();
+                    if (!path.toLowerCase().endsWith(".png")) {
+                        path += ".png";
+                        selected = new File(path);
+                    }
+
+                    //Generar y guardar cada pagina
+                    int total = jasperPrint.getPages().size();
+                    float zoomm = 1.0f;
+                    for (int i = 0; i < total; i++) {
+                        try {
+                            Image img = JasperPrintManager.printPageToImage(jasperPrint, i, zoomm);
+                            BufferedImage bimg = new BufferedImage(
+                                    img.getWidth(null), img.getHeight(null),
+                                    BufferedImage.TYPE_INT_ARGB
+                            );
+                            Graphics2D g = bimg.createGraphics();
+                            g.drawImage(img, 0, 0, null);
+                            g.dispose();
+
+                            String baseName = selected.getName();
+                            baseName = baseName.replaceAll("(?i)\\.png$", "");
+                            File outFile = new File(
+                                    selected.getParentFile(),
+                                    baseName + "_" + (i + 1) + ".png"
+                            );
+
+                            ImageIO.write(bimg, "png", outFile);
+                        } catch (JRException | IOException ex) {
+                            ex.printStackTrace();
+                        }
+                    }
+                }
+            });
+
+            Component[] originales = toolbar.getComponents();
+
+            toolbar.removeAll();
+
+            toolbar.add(btnPrint);
+            toolbar.add(Box.createRigidArea(new Dimension(3, 0)));
+            toolbar.add(btnSave);
+            toolbar.add(Box.createRigidArea(new Dimension(3, 0)));
+            toolbar.add(btnImagen);
+            toolbar.add(Box.createRigidArea(new Dimension(3, 0)));
+
+            for (Component c : originales) {
+                if (c == btnPrint || c == btnSave /*|| c == btnImagen?*/) {
+                    continue;
+                }
+                toolbar.add(c);
+                toolbar.add(Box.createRigidArea(new Dimension(2, 0)));
+            }
+
+            toolbar.revalidate();
+            toolbar.repaint();
+
+            JDialog dialog = new JDialog((Frame) null, "Balance", true);
+            dialog.setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
+            dialog.getContentPane().add(
+                    jasperViewer.getContentPane(), BorderLayout.CENTER
+            );
+
+            dialog.setSize(Toolkit.getDefaultToolkit().getScreenSize());
+            dialog.setLocationRelativeTo(null);
+            dialog.setVisible(true);
+
+        } catch (JRException ex) {
+            ex.printStackTrace();
+        } catch (FileNotFoundException ex) {
+            Logger.getLogger(Balance.class.getName()).log(Level.SEVERE, null, ex);
+        }
+    }//GEN-LAST:event_btnImprimirActionPerformed
+
+    private void btnExcelActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnExcelActionPerformed
+        DefaultTableModel model = (DefaultTableModel) tblBalance.getModel();
+        if (model.getRowCount() == 0) {
+            JOptionPane.showMessageDialog(this,
+                    "La tabla está vacía. No se puede exportar un Excel sin datos.",
+                    "Tabla vacía",
+                    JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+        
+        List<Object[]> resumen = List.of(
+                new Object[]{"Carrera seleccionada: ", cmbCarreras.getSelectedItem()},
+                new Object[]{"Cantidad de apuestas: ", txtApuestas.getText()},
+                new Object[]{"Ganadores: ", txtGanadores.getText()},
+                new Object[]{"Perdedores: ", txtPerdedores.getText()},
+                new Object[]{"Total apostado : ", txtTotalApostado.getText()},
+                new Object[]{"Total abonado: ", txtTotalPagado.getText()},
+                new Object[]{"Mis ganancias: ", txtGanancias.getText()},
+                new Object[]{" ", ""}
+        );
+
+        Set<Integer> columnsToSkip = Set.of(0, 2);
+
+        JFileChooser chooser = new JFileChooser();
+        chooser.setDialogTitle("Guardar Excel");
+        chooser.setApproveButtonText("Guardar");
+        // Filtro opcional para que solo se muestre .xlsx
+        chooser.setFileFilter(new FileNameExtensionFilter("Excel Workbook (*.xlsx)", "xlsx"));
+        chooser.setSelectedFile(new File("Balance.xlsx"));
+
+        int opcion = chooser.showSaveDialog(this);
+        if (opcion != JFileChooser.APPROVE_OPTION) {
+            return;  // cancelado
+        }
+
+        File destino = chooser.getSelectedFile();
+        if (!destino.getName().toLowerCase().endsWith(".xlsx")) {
+            destino = new File(destino.getParentFile(), destino.getName() + ".xlsx");
+        }
+
+        try {
+            Export_Excel.export(tblBalance,
+                    "Balance",
+                    destino.getAbsolutePath(),
+                    columnsToSkip, resumen);
+            // Abrir automáticamente
+            if (Desktop.isDesktopSupported()) {
+                Desktop.getDesktop().open(destino);
+            }
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(this,
+                    "Error al exportar:\n" + ex.getMessage(),
+                    "Error", JOptionPane.ERROR_MESSAGE);
+            ex.printStackTrace();
+        }
+    }//GEN-LAST:event_btnExcelActionPerformed
+
+    private void btnCancelarActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnCancelarActionPerformed
+        this.dispose();
+    }//GEN-LAST:event_btnCancelarActionPerformed
 
     /**
      * @param args the command line arguments
@@ -386,10 +721,10 @@ public class Balance extends javax.swing.JDialog {
     }
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
-    private javax.swing.JButton btnCancel;
-    private javax.swing.JButton btnPrint;
+    private javax.swing.JButton btnCancelar;
+    private javax.swing.JButton btnExcel;
+    private javax.swing.JButton btnImprimir;
     private javax.swing.JComboBox<String> cmbCarreras;
-    private javax.swing.JButton jButton1;
     private javax.swing.JLabel jLabel3;
     private javax.swing.JLabel jLabel4;
     private javax.swing.JLabel jLabel5;
@@ -398,6 +733,7 @@ public class Balance extends javax.swing.JDialog {
     private javax.swing.JLabel jLabel8;
     private javax.swing.JLabel jLabel9;
     private javax.swing.JPanel jPanel1;
+    private javax.swing.JPanel jPanel2;
     private javax.swing.JScrollPane jScrollPane2;
     private javax.swing.JSeparator jSeparator1;
     private javax.swing.JTable tblBalance;

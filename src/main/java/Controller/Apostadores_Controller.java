@@ -28,22 +28,32 @@ public class Apostadores_Controller {
         model.setFk_estados(foreignKey);
         return services.updateApostadores(model);
     }
+    
+    public boolean addSaldo(int saldo, int idapostadores) {
+        model.setSaldo(saldo);
+        model.setIdapostadores(idapostadores);
+        return services.addSaldo(model);
+    }
 
     public DefaultTableModel showApostadores(String search, String stateFilter) {
         return services.showApostadores(search, stateFilter);
     }
 
-    public DefaultTableModel showHistorial(int id) {
-        return services.showHistorial(id);
+    public DefaultTableModel showHistorial(int id, String desde, String hasta) {
+        return services.showHistorial(id, desde, hasta);
     }
 
     //Devuelve si hay o no apuestas realizadas al usuario
-    public boolean tieneHistorial(int idApostador) {
-        DefaultTableModel modelo = showHistorial(idApostador);
+    public boolean tieneHistorial(int idApostador, String desde, String hasta) {
+        DefaultTableModel modelo = showHistorial(idApostador, desde, hasta);
         return modelo.getRowCount() > 0;
     }
 
     public int getMaxCodigo() {
         return services.getMaxCodigo();
+    }
+    
+    public int getSaldo(int idapostadores) {
+        return services.getSaldo(idapostadores);
     }
 }

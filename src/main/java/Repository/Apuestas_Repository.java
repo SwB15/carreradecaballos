@@ -23,28 +23,37 @@ public class Apuestas_Repository {
 
 //********************************Begin of Insert, Update, Disable********************************
     public boolean insert(Apuestas_Model model) {
-        sql = "INSERT INTO apuestas(apuesta, monto, abonado, fecha, fechalimite, observacion, fk_carreras, fk_caballos, fk_apostadores, fk_estados) "
-                + "VALUES(?,?,?,?,?,?,?,?,?,?)";
+        String sql = """
+            INSERT INTO apuestas(
+                apuesta, monto, fecha, fechalimite,
+                observacion, saldousado,
+                fk_carreras, fk_caballos,
+                fk_apostadores, fk_estadopago, fk_estados
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """;
 
         try (Connection cn = DataSource.getConnection()) {
-            // Asegurar que las claves foráneas estén activadas
-            try (Statement stmt = cn.createStatement()) {
-                stmt.execute("PRAGMA foreign_keys = ON;");
-            }
-
+            // activar claves foráneas
+//            try (Statement stmt = cn.createStatement()) {
+//                stmt.execute("PRAGMA foreign_keys = ON;");
+//            }
+            // preparamos el statement pidiendo las claves generadas
             try (PreparedStatement pst = cn.prepareStatement(sql)) {
-                pst.setString(1, model.getApuesta());
-                pst.setInt(2, model.getMonto());
-                pst.setInt(3, model.getAbonado());
-                pst.setString(4, model.getFecha()); // Asegurar formato YYYY-MM-DD HH:MM:SS
-                pst.setString(5, model.getFechalimite());
-                pst.setString(6, model.getObservacion());
-                pst.setInt(7, model.getFk_carreras());
-                pst.setInt(8, model.getFk_caballos());
-                pst.setInt(9, model.getFk_apostadores());
-                pst.setInt(10, model.getFk_estados());
 
-                return pst.execute(); // `execute()` es más eficiente en SQLite
+                int i = 1;
+                pst.setString(i++, model.getApuesta());
+                pst.setInt(i++, model.getMonto());
+                pst.setString(i++, model.getFecha());
+                pst.setString(i++, model.getFechalimite());
+                pst.setString(i++, model.getObservacion());
+                pst.setString(i++, model.getSaldousado());
+                pst.setInt(i++, model.getFk_carreras());
+                pst.setInt(i++, model.getFk_caballos());
+                pst.setInt(i++, model.getFk_apostadores());
+                pst.setInt(i++, model.getFk_estadopago());
+                pst.setInt(i++, model.getFk_estados());
+
+                return pst.execute();
             }
         } catch (SQLException ex) {
             Logger.getLogger(Apuestas_Repository.class.getName()).log(Level.SEVERE, "Error al insertar apuesta", ex);
@@ -53,8 +62,39 @@ public class Apuestas_Repository {
     }
 
     public boolean update(Apuestas_Model model) {
-        sql = "UPDATE apuestas SET apuesta = ?, monto = ?, abonado = ?, fecha = ?, fechalimite = ?, observacion = ?, "
-                + "fk_carreras = ?, fk_caballos = ?, fk_apostadores = ?, fk_estados = ? WHERE idapuestas = ?";
+        sql = "UPDATE apuestas SET apuesta = ?, monto = ?, fecha = ?, fechalimite = ?, observacion = ?, saldousado = ?,"
+                + "fk_carreras = ?, fk_caballos = ?, fk_apostadores = ?, fk_estadopago = ?, fk_estados = ? WHERE idapuestas = ?";
+
+        try (Connection cn = DataSource.getConnection()) {
+//            try (Statement stmt = cn.createStatement()) {
+//                stmt.execute("PRAGMA foreign_keys = ON;");
+//            }
+
+            try (PreparedStatement pst = cn.prepareStatement(sql)) {
+                int i = 1;
+                pst.setString(i++, model.getApuesta());
+                pst.setInt(i++, model.getMonto());
+                pst.setString(i++, model.getFecha());
+                pst.setString(i++, model.getFechalimite());
+                pst.setString(i++, model.getObservacion());
+                pst.setString(i++, model.getSaldousado());
+                pst.setInt(i++, model.getFk_carreras());
+                pst.setInt(i++, model.getFk_caballos());
+                pst.setInt(i++, model.getFk_apostadores());
+                pst.setInt(i++, model.getFk_estadopago());
+                pst.setInt(i++, model.getFk_estados());
+                pst.setInt(i++, model.getIdapuestas());
+
+                return pst.execute();
+            }
+        } catch (SQLException ex) {
+            Logger.getLogger(Apuestas_Repository.class.getName()).log(Level.SEVERE, "Error al actualizar apuesta", ex);
+            return false;
+        }
+    }
+
+    public boolean disable(Apuestas_Model model) {
+        sql = "UPDATE apuestas SET fk_estadopago = ?, fk_estados = ? WHERE idapuestas = ?";
 
         try (Connection cn = DataSource.getConnection()) {
             try (Statement stmt = cn.createStatement()) {
@@ -62,17 +102,10 @@ public class Apuestas_Repository {
             }
 
             try (PreparedStatement pst = cn.prepareStatement(sql)) {
-                pst.setString(1, model.getApuesta());
-                pst.setInt(2, model.getMonto());
-                pst.setInt(3, model.getAbonado());
-                pst.setString(4, model.getFecha());
-                pst.setString(5, model.getFechalimite());
-                pst.setString(6, model.getObservacion());
-                pst.setInt(7, model.getFk_carreras());
-                pst.setInt(8, model.getFk_caballos());
-                pst.setInt(9, model.getFk_apostadores());
-                pst.setInt(10, model.getFk_estados());
-                pst.setInt(11, model.getIdapuestas());
+                int i = 1;
+                pst.setInt(i++, model.getFk_estadopago());
+                pst.setInt(i++, model.getFk_estados());
+                pst.setInt(i++, model.getIdapuestas());
 
                 return pst.execute(); // Más eficiente para SQLite
             }
@@ -81,104 +114,162 @@ public class Apuestas_Repository {
             return false;
         }
     }
-//******************************** End of Insert, Update, Disable ********************************  
 
+    public boolean delete(Apuestas_Model model) {
+        sql = "DELETE FROM apuestas WHERE idapuestas = ?";
+
+        try (Connection cn = DataSource.getConnection()) {
+            try (Statement stmt = cn.createStatement()) {
+                stmt.execute("PRAGMA foreign_keys = ON;");
+            }
+
+            try (PreparedStatement pst = cn.prepareStatement(sql)) {
+                int i = 1;
+                pst.setInt(i++, model.getIdapuestas());
+
+                int filas = pst.executeUpdate();
+                return filas > 0;
+            }
+        } catch (SQLException ex) {
+            Logger.getLogger(Apuestas_Repository.class.getName()).log(Level.SEVERE, "Error al actualizar apuesta", ex);
+            return false;
+        }
+    }
+//******************************** End of Insert, Update, Disable ********************************  
 //********************************Begin of Display Methods********************************
-    public DefaultTableModel showApuestas(String search, String stateFilter, Date startDate, Date endDate) {
+
+    public DefaultTableModel showApuestas(String searchIdCarrera,
+            String stateFilter,
+            Date startDate,
+            Date endDate) {
         SimpleDateFormat formatoBD = new SimpleDateFormat("yyyy-MM-dd");
         SimpleDateFormat formatoMostrar = new SimpleDateFormat("dd/MM/yyyy");
-        DefaultTableModel model;
-        String[] titles = {"Id", "Apuesta", "Monto", "Abonado", "Fecha", "F. Limite", "Observacion", "Apostador", "Carreras", "Caballos", "Estado"};
-        String[] records = new String[titles.length];
-        int totalRecords = 0;
-        model = new DefaultTableModel(null, titles);
 
-        String sSQL = "SELECT a.idapuestas, "
+        // 1) Añadimos dos columnas: "Total Abonado" y "Estado Pago"
+        String[] titles = {
+            "Id", "Apuesta", "Monto",
+            "Fecha", "F. Límite", "Observación", "Saldousado",
+            "Id Apostador", "Apostador", "Saldo",
+            "Carrera", "Id Caballo", "Caballo", "Estado",
+            "Total Abonado", "Estado Pago"
+        };
+        DefaultTableModel model = new DefaultTableModel(null, titles);
+
+        // 2) Consulta: sumamos abonos y traemos descripción de estado de pago
+        String sSQL
+                = "SELECT a.idapuestas, "
                 + "       a.apuesta, "
                 + "       a.monto, "
-                + "       a.abonado, "
                 + "       a.fecha, "
                 + "       a.fechalimite, "
                 + "       a.observacion, "
-                + "       ap.nombre AS apostador, "
-                + "       c.nombre  AS carrera, "
-                + "       cc.caballos  AS caballo, "
-                + "       e.estados "
+                + "       a.saldousado, "
+                + "       ap.idapostadores AS idapostador, "
+                + "       ap.nombre         AS apostador, "
+                + "       ap.saldo, "
+                + "      /* COALESCE(v.saldo,0) AS saldo,*/ "
+                + "       c.nombre          AS carrera, "
+                + "       cc.idcaballos     AS idcaballo, "
+                + "       cc.caballos       AS caballo, "
+                + "       e.estados         AS estado, "
+                + // subconsulta que agrupa abonos por apuesta
+                "       COALESCE(mp.totalabonado,0) AS totalabonado, "
+                + // descripción del estado de pago
+                "       ep.descripcion    AS estadopago "
                 + "FROM   apuestas a "
                 + "JOIN   apostadores ap ON a.fk_apostadores = ap.idapostadores "
+                + "/* LEFT JOIN v_saldosapostadores v ON ap.idapostadores = v.idapostadores*/ "
                 + "JOIN   carreras c     ON a.fk_carreras    = c.idcarreras "
-                + "JOIN   caballos cc     ON a.fk_caballos    = cc.idcaballos "
+                + "JOIN   caballos cc    ON a.fk_caballos    = cc.idcaballos "
                 + "JOIN   estados e      ON a.fk_estados     = e.idestados "
-                + "WHERE  ap.nombre LIKE ?";
-
-        if (stateFilter.equalsIgnoreCase("activo")) {
-            sSQL += " AND e.estados = 'activo'";
-        } else if (stateFilter.equalsIgnoreCase("inactivo")) {
-            sSQL += " AND e.estados = 'inactivo'";
-        }
-
-        // Filtro de fechas si no son nulas
-        if (startDate != null && endDate != null) {
-            sSQL += " AND a.fecha BETWEEN ? AND ?";
-        }
-
-        sSQL += " ORDER BY a.idapuestas DESC";
+                + "LEFT JOIN ( "
+                + "    SELECT fk_apuestas, SUM(monto) AS totalabonado "
+                + "      FROM movimientos "
+                + "      WHERE fk_tipomovimientos = 3 "
+                + "     GROUP BY fk_apuestas "
+                + ") mp ON mp.fk_apuestas = a.idapuestas "
+                + "JOIN   estadopago ep  ON a.fk_estadopago  = ep.idestadopago "
+                + "WHERE  a.fk_carreras  = ? "
+                + "  AND e.estados       = 'activo' "
+                + "ORDER  BY a.idapuestas DESC";
 
         try (Connection cn = DataSource.getConnection(); PreparedStatement pst = cn.prepareStatement(sSQL)) {
-            int index = 1;
-            pst.setString(index++, "%" + search + "%");
 
-            if (startDate != null && endDate != null) {
-                pst.setDate(index++, new java.sql.Date(startDate.getTime()));
-                pst.setDate(index++, new java.sql.Date(endDate.getTime()));
+            // Parámetro de carrera
+            try {
+                pst.setInt(1, Integer.parseInt(searchIdCarrera));
+            } catch (NumberFormatException nfe) {
+                JOptionPane.showMessageDialog(
+                        null,
+                        "ID de carrera inválido: " + searchIdCarrera,
+                        "Error de conversión",
+                        JOptionPane.ERROR_MESSAGE
+                );
+                return model;
             }
 
+            // Ejecución y volcado
             ResultSet rs = pst.executeQuery();
-
             while (rs.next()) {
-                records[0] = rs.getString("idapuestas");
-                records[1] = rs.getString("apuesta");
-                records[2] = rs.getString("monto");
-                records[3] = rs.getString("abonado");
+                // 3) Cada fila: nuevo array + índice reiniciado
+                String[] records = new String[titles.length];
+                int i = 0;
 
-                //Format fecha from yyyy-MM-dd to dd/MM/yyyy
-                String fecha = rs.getString("fecha");
-                if (fecha != null && !fecha.equals("")) {
+                records[i++] = rs.getString("idapuestas");
+                records[i++] = rs.getString("apuesta");
+                records[i++] = rs.getString("monto");
+
+                // Fecha
+                String f = rs.getString("fecha");
+                if (f != null && !f.isEmpty()) {
                     try {
-                        Date fechaBD = formatoBD.parse(fecha);
-                        records[4] = formatoMostrar.format(fechaBD);
-                    } catch (ParseException e) {
-                        records[4] = fecha;
+                        Date d = formatoBD.parse(f);
+                        records[i++] = formatoMostrar.format(d);
+                    } catch (ParseException ex) {
+                        records[i++] = f;
                     }
                 } else {
-                    records[4] = "";
+                    records[i++] = "";
                 }
 
-                //Format fechalimite from yyyy-MM-dd to dd/MM/yyyy
-                String fechalimite = rs.getString("fechalimite");
-                if (fechalimite != null && !fechalimite.equals("")) {
+                // Fecha límite
+                String fl = rs.getString("fechalimite");
+                if (fl != null && !fl.isEmpty()) {
                     try {
-                        Date fechaBD = formatoBD.parse(fechalimite);
-                        records[5] = formatoMostrar.format(fechaBD);
-                    } catch (ParseException e) {
-                        records[5] = fechalimite;
+                        Date d = formatoBD.parse(fl);
+                        records[i++] = formatoMostrar.format(d);
+                    } catch (ParseException ex) {
+                        records[i++] = fl;
                     }
                 } else {
-                    records[5] = "";
+                    records[i++] = "";
                 }
 
-                records[6] = rs.getString("observacion");
-                records[7] = rs.getString("apostador");
-                records[8] = rs.getString("carrera");
-                records[9] = rs.getString("caballo");
-                records[10] = rs.getString("estados");
+                records[i++] = rs.getString("observacion");
+                records[i++] = rs.getString("saldousado");
+                records[i++] = rs.getString("idapostador");
+                records[i++] = rs.getString("apostador");
+                records[i++] = rs.getString("saldo");
+                records[i++] = rs.getString("carrera");
+                records[i++] = rs.getString("idcaballo");
+                records[i++] = rs.getString("caballo");
+                records[i++] = rs.getString("estado");
 
-                totalRecords++;
+                // Nuestras dos nuevas columnas:
+                records[i++] = rs.getString("totalabonado");
+                records[i++] = rs.getString("estadopago");
+
                 model.addRow(records);
             }
             return model;
+
         } catch (SQLException e) {
-            JOptionPane.showMessageDialog(null, "Error en la consulta SQL: " + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+            JOptionPane.showMessageDialog(
+                    null,
+                    "Error en la consulta SQL: " + e.getMessage(),
+                    "Error",
+                    JOptionPane.ERROR_MESSAGE
+            );
             return null;
         }
     }
@@ -203,6 +294,30 @@ public class Apuestas_Repository {
 
             }
             return maxcodigo + 1;
+        } catch (SQLException e) {
+            JOptionPane.showConfirmDialog(null, e);
+            return 0;
+        }
+    }
+
+    //Get max Id from Apuestas
+    public int getMaxid() {
+        int maxcodigo = 0;
+        String codigo = "";
+        String sSQL = "SELECT MAX(idapuestas) AS max_id FROM apuestas";
+
+        try (Connection cn = DataSource.getConnection(); PreparedStatement pst = cn.prepareStatement(sSQL)) { //Don't touch!
+            ResultSet rs = pst.executeQuery();
+
+            while (rs.next()) {
+                codigo = rs.getString("max_id");
+                if (codigo != null) {
+                    maxcodigo = Integer.parseInt(rs.getString("max_id"));
+                } else {
+                    maxcodigo = 0;
+                }
+            }
+            return maxcodigo;
         } catch (SQLException e) {
             JOptionPane.showConfirmDialog(null, e);
             return 0;

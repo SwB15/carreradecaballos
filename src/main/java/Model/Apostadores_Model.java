@@ -1,19 +1,22 @@
 package Model;
 
-public class Apostadores_Model{
+public class Apostadores_Model {
+
     private int idapostadores;
     private String cedula;
     private String nombre;
+    private int saldo;
     private String observacion;
     private int fk_estados;
 
     public Apostadores_Model() {
     }
 
-    public Apostadores_Model(int idapostadores, String cedula, String nombre, String observacion, int fk_estados) {
+    public Apostadores_Model(int idapostadores, String cedula, String nombre, int saldo, String observacion, int fk_estados) {
         this.idapostadores = idapostadores;
         this.cedula = cedula;
         this.nombre = nombre;
+        this.saldo = saldo;
         this.observacion = observacion;
         this.fk_estados = fk_estados;
     }
@@ -40,6 +43,14 @@ public class Apostadores_Model{
 
     public void setNombre(String nombre) {
         this.nombre = nombre;
+    }
+
+    public int getSaldo() {
+        return saldo;
+    }
+
+    public void setSaldo(int saldo) {
+        this.saldo = saldo;
     }
 
     public String getObservacion() {

@@ -12,8 +12,10 @@ import java.text.SimpleDateFormat;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -57,13 +59,19 @@ public class Apuestas extends javax.swing.JDialog {
     }
 
     private void showApuestas(String search, String stateFilter, Date startDate, Date endDate) {
+        // 1) Si no hay ID, devolvemos la tabla vacía y salimos
+        if (search == null || search.trim().isEmpty()) {
+            tblApuestas.setModel(new DefaultTableModel());
+            return;
+        }
+
         try {
-            DefaultTableModel model;
-            model = apuestas_controller.showApuestas(search, stateFilter, startDate, endDate);
+            DefaultTableModel model = apuestas_controller.showApuestas(search, stateFilter, startDate, endDate);
             tblApuestas.setModel(model);
             ocultar_columnas(tblApuestas);
             for (int i = 0; i < tblApuestas.getColumnCount(); i++) {
-                tblApuestas.getColumnModel().getColumn(i).setCellRenderer(new ApuestasRenderer());
+                tblApuestas.getColumnModel().getColumn(i)
+                        .setCellRenderer(new ApuestasRenderer());
             }
         } catch (Exception e) {
             JOptionPane.showMessageDialog(null, e);
@@ -134,38 +142,51 @@ public class Apuestas extends javax.swing.JDialog {
 
     // Método para cargar las carreras en el ComboBox
     private void carrerasCombobox() {
-        // Obtenemos el HashMap con los Carreras (ID -> nombre)
+        // 1) Obtén el mapa ID → Nombre
         CarrerasMap = apuestas_controller.fillCarrerasCombobox();
 
+        // 2) Vaciamos el combo
         cmbCarreras.removeAllItems();
-        // Agregamos los nombres de los Carreras al ComboBox
-        for (String nombre : CarrerasMap.values()) {
-            cmbCarreras.addItem(nombre);
+
+        // 3) Creamos una lista de entradas y la ordenamos por key (ID) descendente
+        List<Map.Entry<String, String>> entries = new ArrayList<>(CarrerasMap.entrySet());
+        entries.sort((e1, e2) -> {
+            // parseInt para comparar numéricamente
+            int id1 = Integer.parseInt(e1.getKey());
+            int id2 = Integer.parseInt(e2.getKey());
+            return Integer.compare(id2, id1);  // id2 - id1 → descendente
+        });
+
+        // 4) Agregamos al combo ya ordenado
+        for (Map.Entry<String, String> entry : entries) {
+            cmbCarreras.addItem(entry.getValue());
         }
 
-        // Si el ComboBox tiene elementos, seleccionamos el primero automáticamente y actualizamos el ID
-        if (cmbCarreras.getItemCount() > 0) {
-            String firstNombre = (String) cmbCarreras.getItemAt(0);
-            for (Map.Entry<String, String> entry : CarrerasMap.entrySet()) {
-                if (entry.getValue().equals(firstNombre)) {
-                    txtIdcarreras.setText(entry.getKey());
-                    caballosCombobox(Integer.parseInt(entry.getKey()));
-                    break;
-                }
+        // 5) Si no hay elementos, dejamos la tabla vacía
+        if (entries.isEmpty()) {
+            showApuestas("", stateFilter, startDate, endDate);
+            return;
+        }
+
+        // 6) Seleccionamos la primera (que ahora es la de ID más alto)
+        Map.Entry<String, String> first = entries.get(0);
+        txtIdcarreras.setText(first.getKey());
+        caballosCombobox(Integer.parseInt(first.getKey()));
+        showApuestas(first.getKey(), stateFilter, startDate, endDate);
+
+        // 7) Listener para recargar al cambiar selección
+        cmbCarreras.addActionListener(e -> {
+            String selNombre = (String) cmbCarreras.getSelectedItem();
+            if (selNombre == null) {
+                return;
             }
-        }
-
-        // Listener para cmbCarreras (para actualizar el ID al seleccionar un nuevo caballo)
-        cmbCarreras.addActionListener((ActionEvent e) -> {
-            String selectedNombre = (String) cmbCarreras.getSelectedItem();
-            if (selectedNombre != null) {
-                for (Map.Entry<String, String> entry : CarrerasMap.entrySet()) {
-                    if (entry.getValue().equals(selectedNombre)) {
-                        txtIdcarreras.setText(entry.getKey());
-                        caballosCombobox(Integer.parseInt(entry.getKey()));
-                        System.out.println("ID Caballo: " + entry.getKey());
-                        break;
-                    }
+            // buscamos la entrada cuyo value coincida
+            for (Map.Entry<String, String> en : entries) {
+                if (en.getValue().equals(selNombre)) {
+                    txtIdcarreras.setText(en.getKey());
+                    caballosCombobox(Integer.parseInt(en.getKey()));
+                    showApuestas(en.getKey(), stateFilter, startDate, endDate);
+                    break;
                 }
             }
         });
@@ -649,9 +670,9 @@ public class Apuestas extends javax.swing.JDialog {
 
         if (validateFields()) {
             if (txtIdapuestas.getText().length() == 0) {
-                save(Integer.parseInt(txtNumero.getText()), txtNombre.getText(), Integer.parseInt(txtMonto.getText().replace(".", "")), Integer.parseInt(txtAbonado.getText().replace(".", "")), fechaFinal, fechaLimitefinal, atxtObservacion.getText(), Integer.parseInt(txtIdcarreras.getText()), Integer.parseInt(txtIdcaballos.getText()), Integer.parseInt(txtIdapostadores.getText()));
+                save(Integer.parseInt(txtNumero.getText()), txtNombre.getText(), Integer.parseInt(txtMonto.getText().replace(".", "")), fechaFinal, fechaLimitefinal, atxtObservacion.getText(), Integer.parseInt(txtIdcarreras.getText()), Integer.parseInt(txtIdcaballos.getText()), Integer.parseInt(txtIdapostadores.getText()));
             } else {
-                update(Integer.parseInt(txtIdapuestas.getText()), txtNombre.getText(), Integer.parseInt(txtMonto.getText().replace(".", "")), Integer.parseInt(txtAbonado.getText().replace(".", "")), fechaFinal, fechaLimitefinal, atxtObservacion.getText(), Integer.parseInt(txtIdcarreras.getText()), Integer.parseInt(txtIdcaballos.getText()), Integer.parseInt(txtIdapostadores.getText()));
+                update(Integer.parseInt(txtIdapuestas.getText()), txtNombre.getText(), Integer.parseInt(txtMonto.getText().replace(".", "")), fechaFinal, fechaLimitefinal, atxtObservacion.getText(), Integer.parseInt(txtIdcarreras.getText()), Integer.parseInt(txtIdcaballos.getText()), Integer.parseInt(txtIdapostadores.getText()));
             }
         }
     }//GEN-LAST:event_btnSaveActionPerformed
@@ -944,11 +965,11 @@ public class Apuestas extends javax.swing.JDialog {
     private javax.swing.JTextField txtNumero;
     // End of variables declaration//GEN-END:variables
 
-    private void save(int id, String apuesta, int monto, int abonado, String fecha, String fechalimite, String observacion, int fk_carreras, int fk_caballos, int fk_apostadores) {
+    private void save(int id, String apuesta, int monto, String fecha, String fechalimite, String observacion, int fk_carreras, int fk_caballos, int fk_apostadores) {
         finalState = "activo";
         idestado = State_Controller.getEstadoId(finalState, Run.model);
 
-        apuestas_controller.createApuestas(apuesta, monto, abonado, fecha, fechalimite, observacion, fk_carreras, fk_caballos, fk_apostadores, idestado);
+//        apuestas_controller.createApuestas(apuesta, monto, fecha, fechalimite, observacion, fk_carreras, fk_caballos, fk_apostadores, idestado);
 
         JOptionPane.showMessageDialog(null, "Apuesta ingresada exitosamente!", "Hecho!", JOptionPane.INFORMATION_MESSAGE);
         limpiar();
@@ -956,7 +977,7 @@ public class Apuestas extends javax.swing.JDialog {
         showApuestas("", stateFilter, startDate, endDate);
     }
 
-    private void update(int id, String apuesta, int monto, int abonado, String fecha, String fechalimite, String observacion, int fk_carreras, int fk_caballos, int fk_apostadores) {
+    private void update(int id, String apuesta, int monto, String fecha, String fechalimite, String observacion, int fk_carreras, int fk_caballos, int fk_apostadores) {
         if (initialState.equals("activo") && finalState.equals("inactivo")) {
             if (txtIdapuestas.getText().length() == 0) {
                 JOptionPane.showMessageDialog(null, "Seleccione una apuesta para desactivar.", "Advertencia!", JOptionPane.WARNING_MESSAGE);
@@ -994,7 +1015,7 @@ public class Apuestas extends javax.swing.JDialog {
             idestado = State_Controller.getEstadoId(initialState, Run.model);
         }
 
-        apuestas_controller.updateApuestas(id, apuesta, monto, abonado, fecha, fechalimite, observacion, fk_carreras, fk_caballos, fk_apostadores, idestado);
+//        apuestas_controller.updateApuestas(id, apuesta, monto, fecha, fechalimite, observacion, fk_carreras, fk_caballos, fk_apostadores, idestado);
 
         JOptionPane.showMessageDialog(null, "Apuesta actualizada exitosamente!", "Hecho!", JOptionPane.INFORMATION_MESSAGE);
         limpiar();
