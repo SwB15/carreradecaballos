@@ -1,12 +1,10 @@
 package View;
 
-import Controller.Apostadores_Controller;
 import Controller.Movimientos_Controller;
+import Services.Exceptions.ServiceException;
 import java.awt.Color;
 import java.awt.event.KeyEvent;
 import java.text.DecimalFormat;
-import java.time.LocalDate;
-import java.time.format.DateTimeFormatter;
 import javax.swing.JOptionPane;
 
 /**
@@ -15,22 +13,31 @@ import javax.swing.JOptionPane;
  */
 public class AgregarSaldo extends javax.swing.JDialog {
 
-    Apostadores_Controller controller = new Apostadores_Controller();
-    Movimientos_Controller movimientoscontroller = new Movimientos_Controller();
-    DecimalFormat formateador14 = new DecimalFormat("#,###.###");
+    private final Movimientos_Controller movimientosController;
+    private final int idApostador;
+    private final DecimalFormat formateador = new DecimalFormat("#,###");
+    private boolean guardadoExitoso = false;
 
-    public AgregarSaldo(java.awt.Frame parent, boolean modal) {
+    public AgregarSaldo(java.awt.Frame parent, boolean modal, int idApostador, String nombreApostador) {
         super(parent, modal);
         initComponents();
         this.setLocationRelativeTo(null);
-        LocalDate localDate = LocalDate.now();
+
+        this.movimientosController = new Movimientos_Controller();
+        this.idApostador = idApostador;
+
+        // Configuración inicial de la UI
+        txtApostadores.setText(nombreApostador);
         txtApostadores.setEditable(false);
         txtApostadores.setBackground(Color.white);
-        txtApostadores.transferFocus();
         txtMonto.requestFocus();
         txtMontoactual.setVisible(false);
         txtIdapostadores.setVisible(false);
         txtDestino.setVisible(false);
+    }
+
+    public boolean isGuardadoExitoso() {
+        return guardadoExitoso;
     }
 
     @SuppressWarnings("unchecked")
@@ -161,45 +168,42 @@ public class AgregarSaldo extends javax.swing.JDialog {
     }// </editor-fold>//GEN-END:initComponents
 
     private void btnSaveActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnSaveActionPerformed
-        if (validateFields()) {
-            // Determinar la operación: Depositar o Retirar
-            String operacion = cmbOperaciones.getSelectedItem().toString().toLowerCase();
-            String observaciones = cmbOperaciones.getSelectedIndex() == 0 ? "Depósito" : cmbOperaciones.getSelectedIndex() == 1 ? "Retiro" : "";
+        // 1. VALIDAR Y RECOGER DATOS DE LA VISTA
+        if (txtMonto.getText().trim().isEmpty() || txtMonto.getText().equals("0")) {
+            JOptionPane.showMessageDialog(this, "Ingrese un monto mayor a 0.", "Entrada Inválida", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
 
-            String[] opciones = {"Sí", "No"};
-            int confirm = JOptionPane.showOptionDialog(this,
-                    "¿Estás seguro que quieres " + operacion + " " + txtMonto.getText() + " guaraníes?",
-                    "Confirmar Transacción",
-                    JOptionPane.YES_NO_OPTION,
-                    JOptionPane.WARNING_MESSAGE,
-                    null,
-                    opciones,
-                    opciones[0]); // Por defecto "Sí"
+        int monto;
+        try {
+            monto = Integer.parseInt(txtMonto.getText().replace(".", ""));
+        } catch (NumberFormatException e) {
+            JOptionPane.showMessageDialog(this, "El monto ingresado no es un número válido.", "Entrada Inválida", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
 
-            if (confirm == JOptionPane.YES_OPTION) {
-                // Obtener la fecha actual formateada
-                LocalDate fechaActual = LocalDate.now();
-                DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
-                String fechaFormateada = fechaActual.format(formatter);
+        String operacionStr = cmbOperaciones.getSelectedItem().toString();
+        if ("Retirar".equalsIgnoreCase(operacionStr)) {
+            monto = -monto; // Se convierte a negativo para retiros
+        }
 
-                // Obtener valores numéricos: ID, saldo actual y monto ingresado (eliminando separadores)
-                int idApostador = Integer.parseInt(txtIdapostadores.getText());
-                int montoOperacion = Integer.parseInt(txtMonto.getText().replace(".", ""));
-                int fk_tipomovimientos;
+        String descripcion = atxtObservacion.getText().trim();
+        if (descripcion.isEmpty()) {
+            descripcion = operacionStr;
+        }
 
-                if (cmbOperaciones.getSelectedIndex() == 0) {
-                    fk_tipomovimientos = 1;
-                } else {
-                    fk_tipomovimientos = 2;
-                }
+        // 2. LLAMAR AL CONTROLADOR
+        try {
+            movimientosController.crearMovimientoDeSaldo(idApostador, monto, descripcion);
 
-                if (atxtObservacion.getText().length() == 0) {
-                    atxtObservacion.setText(observaciones);
-                }
+            // 3. MOSTRAR ÉXITO, MARCAR Y CERRAR
+            this.guardadoExitoso = true; // Se marca que la operación fue exitosa
+            JOptionPane.showMessageDialog(this, operacionStr + " realizado exitosamente.", "Éxito", JOptionPane.INFORMATION_MESSAGE);
+            this.dispose();
 
-                save(idApostador, fechaFormateada, montoOperacion, null, atxtObservacion.getText(), fk_tipomovimientos);
-                this.dispose();
-            }
+        } catch (ServiceException e) {
+            // 4. MOSTRAR ERROR
+            JOptionPane.showMessageDialog(this, "Error: " + e.getMessage(), "Error en la Operación", JOptionPane.ERROR_MESSAGE);
         }
     }//GEN-LAST:event_btnSaveActionPerformed
 
@@ -217,7 +221,7 @@ public class AgregarSaldo extends javax.swing.JDialog {
     private void txtMontoKeyReleased(java.awt.event.KeyEvent evt) {//GEN-FIRST:event_txtMontoKeyReleased
         if (txtMonto.getText().length() > 3) {
             String cadena = txtMonto.getText().replace(".", "");
-            txtMonto.setText(formateador14.format(Integer.parseInt(cadena)));
+            txtMonto.setText(formateador.format(Integer.parseInt(cadena)));
         }
     }//GEN-LAST:event_txtMontoKeyReleased
 
@@ -236,65 +240,6 @@ public class AgregarSaldo extends javax.swing.JDialog {
         }
     }//GEN-LAST:event_txtMontoKeyTyped
 
-    /**
-     * @param args the command line arguments
-     */
-    public static void main(String args[]) {
-        /* Set the Nimbus look and feel */
-        //<editor-fold defaultstate="collapsed" desc=" Look and feel setting code (optional) ">
-        /* If Nimbus (introduced in Java SE 6) is not available, stay with the default look and feel.
-         * For details see http://download.oracle.com/javase/tutorial/uiswing/lookandfeel/plaf.html 
-         */
-        try {
-            for (javax.swing.UIManager.LookAndFeelInfo info : javax.swing.UIManager.getInstalledLookAndFeels()) {
-                if ("Nimbus".equals(info.getName())) {
-                    javax.swing.UIManager.setLookAndFeel(info.getClassName());
-                    break;
-
-                }
-            }
-        } catch (ClassNotFoundException ex) {
-            java.util.logging.Logger.getLogger(AgregarSaldo.class
-                    .getName()).log(java.util.logging.Level.SEVERE, null, ex);
-
-        } catch (InstantiationException ex) {
-            java.util.logging.Logger.getLogger(AgregarSaldo.class
-                    .getName()).log(java.util.logging.Level.SEVERE, null, ex);
-
-        } catch (IllegalAccessException ex) {
-            java.util.logging.Logger.getLogger(AgregarSaldo.class
-                    .getName()).log(java.util.logging.Level.SEVERE, null, ex);
-
-        } catch (javax.swing.UnsupportedLookAndFeelException ex) {
-            java.util.logging.Logger.getLogger(AgregarSaldo.class
-                    .getName()).log(java.util.logging.Level.SEVERE, null, ex);
-        }
-        //</editor-fold>
-
-        /* Create and display the dialog */
-        java.awt.EventQueue.invokeLater(new Runnable() {
-            public void run() {
-                AgregarSaldo dialog = new AgregarSaldo(new javax.swing.JFrame(), true);
-                dialog.addWindowListener(new java.awt.event.WindowAdapter() {
-                    @Override
-                    public void windowClosing(java.awt.event.WindowEvent e) {
-                        System.exit(0);
-                    }
-                });
-                dialog.setVisible(true);
-            }
-        });
-    }
-
-    private boolean validateFields() {
-        if (txtMonto.getText().length() == 0 || txtMonto.getText().equals("0")) {
-            JOptionPane.showMessageDialog(null, "Ingrese un monto mayor a 0", "Advertencia!", JOptionPane.WARNING_MESSAGE);
-            return false;
-        }
-
-        return true;
-    }
-
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JTextArea atxtObservacion;
     private javax.swing.JButton btnCancel;
@@ -312,22 +257,4 @@ public class AgregarSaldo extends javax.swing.JDialog {
     public static javax.swing.JTextField txtMontoactual;
     // End of variables declaration//GEN-END:variables
 
-    private void save(int id, String fecha, int monto, Integer fk_apuestas, String observacion, Integer fk_tipomovimientos) {
-        movimientoscontroller.create(fecha, monto, observacion, id, fk_apuestas, fk_tipomovimientos, null);
-
-        //En la consulta se hace UPDATE saldo = saldo + ? FROM apostadores WHERE idapostadores = ?
-        if (cmbOperaciones.getSelectedIndex() == 0) { //Si se selecciona deposito
-            controller.addSaldo(monto, id);
-        } else {
-            controller.addSaldo(-monto, id); //Si se selecciona retirar se le pasa el monto en negativo
-        }
-
-        JOptionPane.showMessageDialog(null, cmbOperaciones.getSelectedItem().toString() + " realizado exitosamente!", "Hecho!", JOptionPane.INFORMATION_MESSAGE);
-        if (txtDestino.getText().equals("Apostadores")) {
-            Apostadores.btnActualizarOculto.doClick();
-        } else {
-            NewApuestas.btnActualizarsaldooculto.doClick();
-        }
-        this.dispose();
-    }
 }

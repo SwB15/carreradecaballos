@@ -1,25 +1,42 @@
 package Model;
 
-public class Detallecarreras_Model{
-    private int iddetallecarreras;
+/**
+ * Modela la relación "muchos a muchos" entre Carreras y Caballos. Cada registro
+ * en esta tabla significa que un caballo específico está participando en una
+ * carrera específica.
+ */
+public class Detallecarreras_Model {
+
+    private int idDetalleCarrera;
     private int fk_carreras;
     private int fk_caballos;
 
+    /**
+     * Constructor por defecto.
+     */
     public Detallecarreras_Model() {
     }
 
-    public Detallecarreras_Model(int iddetallecarreras, int fk_carreras, int fk_caballos) {
-        this.iddetallecarreras = iddetallecarreras;
+    /**
+     * Constructor para inicializar el modelo con todos sus datos.
+     *
+     * @param idDetalleCarrera El ID único de esta entrada de detalle.
+     * @param fk_carreras El ID de la carrera.
+     * @param fk_caballos El ID del caballo participante.
+     */
+    public Detallecarreras_Model(int idDetalleCarrera, int fk_carreras, int fk_caballos) {
+        this.idDetalleCarrera = idDetalleCarrera;
         this.fk_carreras = fk_carreras;
         this.fk_caballos = fk_caballos;
     }
 
-    public int getIddetallecarreras() {
-        return iddetallecarreras;
+    // --- Getters y Setters ---
+    public int getIdDetalleCarrera() {
+        return idDetalleCarrera;
     }
 
-    public void setIddetallecarreras(int iddetallecarreras) {
-        this.iddetallecarreras = iddetallecarreras;
+    public void setIdDetalleCarrera(int idDetalleCarrera) {
+        this.idDetalleCarrera = idDetalleCarrera;
     }
 
     public int getFk_carreras() {

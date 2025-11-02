@@ -8,7 +8,7 @@
 	<parameter name="Nombre" class="java.lang.String"/>
 	<parameter name="Currentdate" class="java.lang.String"/>
 	<query language="sql"><![CDATA[]]></query>
-	<field name="Apostador" class="java.lang.String"/>
+	<field name="Carrera" class="java.lang.String"/>
 	<field name="Monto" class="java.lang.String"/>
 	<field name="Fecha" class="java.lang.String"/>
 	<field name="Caballo" class="java.lang.String"/>
@@ -64,7 +64,7 @@
 			</box>
 		</element>
 		<element kind="staticText" uuid="36372068-902f-4d08-9156-b8a3566b60ee" x="27" y="0" width="100" height="20" bold="true" hTextAlign="Center" vTextAlign="Middle">
-			<text><![CDATA[Apostador]]></text>
+			<text><![CDATA[Carrera]]></text>
 			<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="dfd8ecbf-fa9d-478e-9318-3ac7e77f1f8a"/>
 			<box>
 				<pen lineWidth="1.0"/>
@@ -102,7 +102,7 @@
 				</box>
 			</element>
 			<element kind="textField" uuid="3b460d73-aa70-4dc0-b52b-5911ce6e146e" stretchType="ContainerBottom" x="27" y="0" width="100" height="20" vTextAlign="Middle">
-				<expression><![CDATA[$F{Apostador}]]></expression>
+				<expression><![CDATA[$F{Carrera}]]></expression>
 				<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="dfd8ecbf-fa9d-478e-9318-3ac7e77f1f8a"/>
 				<box topPadding="3" leftPadding="3" bottomPadding="3" rightPadding="3">
 					<pen lineWidth="1.0"/>

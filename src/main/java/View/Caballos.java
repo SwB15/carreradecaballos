@@ -1,10 +1,10 @@
 package View;
 
 import Config.AppPaths;
-import Config.Export_Excel;
-import Config.Run;
 import Controller.Caballos_Controller;
-import Controller.State_Controller;
+import Model.Caballos_Model;
+import Services.Exceptions.ServiceException;
+import Utils.ExcelExporter;
 import java.awt.BorderLayout;
 import java.awt.Component;
 import java.awt.Container;
@@ -22,10 +22,10 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
-import java.nio.file.Paths;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -43,6 +43,8 @@ import javax.swing.JPanel;
 import javax.swing.JTable;
 import javax.swing.filechooser.FileNameExtensionFilter;
 import javax.swing.table.DefaultTableModel;
+import javax.swing.table.TableModel;
+import javax.swing.table.TableRowSorter;
 import net.sf.jasperreports.engine.JRException;
 import net.sf.jasperreports.engine.JasperCompileManager;
 import net.sf.jasperreports.engine.JasperFillManager;
@@ -60,48 +62,87 @@ import net.sf.jasperreports.view.JasperViewer;
  */
 public class Caballos extends javax.swing.JDialog {
 
-    Caballos_Controller controller = new Caballos_Controller();
-
-    private String initialState = "", finalState = "", stateFilter = "todos";
-    private String id = "";
-    private int idestado;
-    DateTimeFormatter fmt = DateTimeFormatter.ofPattern("dd/MM/yyyy");
-    String currentdate = LocalDate.now().format(fmt);
+    private final Caballos_Controller controller;
+    private String stateFilter = "todos"; // Mantenemos el estado del filtro
 
     public Caballos(java.awt.Frame parent, boolean modal) {
         super(parent, modal);
         initComponents();
         this.setLocationRelativeTo(null);
+
+        // Se inicializa el controlador.
+        this.controller = new Caballos_Controller();
+
+        // Configuración inicial de la UI
         txtIdcaballos.setVisible(false);
         txtNumero.setEditable(false);
-        txtNumero.setText(String.valueOf(controller.getMaxCodigo()));
+        txtNumero.setText("Nuevo");
+        txtCaballos.requestFocus();
+
+        // Se llama al nuevo método para cargar los datos iniciales.
+        actualizarTabla();
+
+        txtIdcaballos.setVisible(false);
+        txtNumero.setEditable(false);
         txtNumero.transferFocus();
         txtCaballos.requestFocus();
-        showCaballos("", stateFilter);
     }
 
-    private void showCaballos(String search, String stateFilter) {
+    private void actualizarTabla() {
+        String search = txtBuscar.getText();
+
         try {
-            DefaultTableModel model;
-            model = controller.showCaballos(search, stateFilter);
+            // 1. Se llama al controlador para obtener los DATOS (una Lista de Modelos).
+            List<Caballos_Model> listaCaballos = controller.listarCaballos(search, stateFilter);
+
+            // 2. Se crea un DefaultTableModel VACÍO.
+            String[] titles = {"Id", "Caballos", "Jinetes", "Observacion", "Estado"};
+            DefaultTableModel model = new DefaultTableModel(null, titles) {
+                @Override
+                public boolean isCellEditable(int row, int column) {
+                    return false;
+                }
+            };
+
+            // 3. Se itera la lista y se llena el modelo fila por fila.
+            for (Caballos_Model caballo : listaCaballos) {
+                model.addRow(new Object[]{
+                    caballo.getIdcaballos(),
+                    caballo.getCaballos(),
+                    caballo.getJinete(),
+                    caballo.getObservacion(),
+                    caballo.getFk_estados() == 1 ? "Activo" : "Inactivo"
+                });
+            }
+
+            // 4. Se asigna el modelo a la JTable.
             tblCaballos.setModel(model);
-            ocultar_columnas(tblCaballos);
-        } catch (Exception e) {
-            JOptionPane.showMessageDialog(null, e);
+            TableRowSorter<DefaultTableModel> sorter = new TableRowSorter<>(model);
+            tblCaballos.setRowSorter(sorter);
+
+            // 5. Se ocultan las columnas necesarias.
+            ocultar_columnas();
+
+        } catch (ServiceException e) {
+            JOptionPane.showMessageDialog(this, "Error al cargar los caballos:\n" + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
         }
     }
 
-    private void ocultar_columnas(JTable table) {
-        table.getColumnModel().getColumn(0).setMaxWidth(0);
-        table.getColumnModel().getColumn(0).setMinWidth(0);
-        table.getColumnModel().getColumn(0).setPreferredWidth(0);
-    }
-
-    private void limpiar() {
+    private void limpiarFormulario() {
         txtIdcaballos.setText("");
+        txtNumero.setText("Nuevo");
         txtCaballos.setText("");
         txtJinete.setText("");
         atxtObservacion.setText("");
+        chbActive.setSelected(false);
+        btnSave.setText("Guardar");
+        txtCaballos.requestFocus();
+    }
+
+    private void ocultar_columnas() {
+        tblCaballos.getColumnModel().getColumn(0).setMaxWidth(0);
+        tblCaballos.getColumnModel().getColumn(0).setMinWidth(0);
+        tblCaballos.getColumnModel().getColumn(0).setPreferredWidth(0);
     }
 
     @SuppressWarnings("unchecked")
@@ -185,11 +226,6 @@ public class Caballos extends javax.swing.JDialog {
         jScrollPane3.setViewportView(atxtObservacion);
 
         chbActive.setText("Activo");
-        chbActive.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                chbActiveActionPerformed(evt);
-            }
-        });
 
         btnImprimir.setIcon(new javax.swing.ImageIcon(getClass().getResource("/Images/print_icon16.png"))); // NOI18N
         btnImprimir.addActionListener(new java.awt.event.ActionListener() {
@@ -408,33 +444,62 @@ public class Caballos extends javax.swing.JDialog {
     }// </editor-fold>//GEN-END:initComponents
 
     private void btnSaveActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnSaveActionPerformed
-        if (txtIdcaballos.getText().length() == 0) {
-            save(txtCaballos.getText(), txtJinete.getText(), atxtObservacion.getText());
-        } else {
-            update(Integer.parseInt(txtIdcaballos.getText()), txtCaballos.getText(), txtJinete.getText(), atxtObservacion.getText());
+        if (txtCaballos.getText().trim().isEmpty()) {
+            JOptionPane.showMessageDialog(this, "El nombre del caballo no puede estar vacío.", "Validación", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        String nombre = txtCaballos.getText().trim();
+        String jinete = txtJinete.getText().trim();
+        String observacion = atxtObservacion.getText().trim();
+
+        try {
+            if (txtIdcaballos.getText().trim().isEmpty()) {
+                // CREAR
+                int fk_estados = 1;
+                controller.crearCaballo(nombre, jinete, observacion, fk_estados);
+                JOptionPane.showMessageDialog(this, "Caballo creado exitosamente.", "Éxito", JOptionPane.INFORMATION_MESSAGE);
+            } else {
+                // ACTUALIZAR
+                int fk_estados = chbActive.isSelected() ? 1 : 2;
+                int id = Integer.parseInt(txtIdcaballos.getText());
+                controller.actualizarCaballo(id, nombre, jinete, observacion, fk_estados);
+                JOptionPane.showMessageDialog(this, "Caballo actualizado exitosamente.", "Éxito", JOptionPane.INFORMATION_MESSAGE);
+            }
+            limpiarFormulario();
+            actualizarTabla();
+        } catch (ServiceException | NumberFormatException e) {
+            JOptionPane.showMessageDialog(this, "Error: " + e.getMessage(), "Error de Operación", JOptionPane.ERROR_MESSAGE);
         }
     }//GEN-LAST:event_btnSaveActionPerformed
 
     private void tblCaballosMouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_tblCaballosMouseClicked
-        int select = tblCaballos.rowAtPoint(evt.getPoint());
-        tblCaballos.setRowSelectionInterval(select, select);
-
-        id = tblCaballos.getValueAt(select, 0).toString();
-        txtNumero.setText(String.valueOf(tblCaballos.getValueAt(select, 0)));
-        txtIdcaballos.setText(String.valueOf(tblCaballos.getValueAt(select, 0)));
-        txtCaballos.setText(String.valueOf(tblCaballos.getValueAt(select, 1)));
-        txtJinete.setText(String.valueOf(tblCaballos.getValueAt(select, 2)));
-        atxtObservacion.setText(String.valueOf(tblCaballos.getValueAt(select, 3)));
-
-        if ("activo".equals(tblCaballos.getValueAt(select, 4).toString())) {
-            chbActive.setSelected(true);
-            initialState = tblCaballos.getValueAt(select, 4).toString();
-        } else {
-            chbActive.setSelected(false);
-            initialState = tblCaballos.getValueAt(select, 4).toString();
+        int filaVista = tblCaballos.getSelectedRow();
+        if (filaVista == -1) {
+            return;
         }
 
-        showCaballos("", stateFilter);
+        int filaModelo = tblCaballos.convertRowIndexToModel(filaVista);
+        DefaultTableModel model = (DefaultTableModel) tblCaballos.getModel();
+
+        // Se obtienen los valores de forma segura, verificando si son nulos.
+        Object idObj = model.getValueAt(filaModelo, 0);
+        Object caballoObj = model.getValueAt(filaModelo, 1);
+        Object jineteObj = model.getValueAt(filaModelo, 2);
+        Object obsObj = model.getValueAt(filaModelo, 3);
+        Object estadoObj = model.getValueAt(filaModelo, 4);
+
+        // Se asignan a los campos de texto, usando "" si el valor es nulo.
+        txtIdcaballos.setText(idObj != null ? idObj.toString() : "");
+        txtNumero.setText(idObj != null ? idObj.toString() : "");
+        txtCaballos.setText(caballoObj != null ? caballoObj.toString() : "");
+        txtJinete.setText(jineteObj != null ? jineteObj.toString() : "");
+        atxtObservacion.setText(obsObj != null ? obsObj.toString() : "");
+
+        String estadoStr = (estadoObj != null) ? estadoObj.toString() : "";
+        chbActive.setSelected("Activo".equalsIgnoreCase(estadoStr));
+
+        btnSave.setText("Actualizar");
     }//GEN-LAST:event_tblCaballosMouseClicked
 
     private void txtCaballosKeyPressed(java.awt.event.KeyEvent evt) {//GEN-FIRST:event_txtCaballosKeyPressed
@@ -459,22 +524,15 @@ public class Caballos extends javax.swing.JDialog {
     }//GEN-LAST:event_atxtObservacionKeyPressed
 
     private void txtBuscarKeyReleased(java.awt.event.KeyEvent evt) {//GEN-FIRST:event_txtBuscarKeyReleased
-        showCaballos(txtBuscar.getText(), stateFilter);
+        actualizarTabla();
     }//GEN-LAST:event_txtBuscarKeyReleased
 
     private void cmbEstadoActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_cmbEstadoActionPerformed
-        stateFilter = cmbEstado.getSelectedItem().toString().toLowerCase();
-        showCaballos(txtBuscar.getText(), stateFilter);
+        // Se guarda el estado del filtro seleccionado.
+        this.stateFilter = cmbEstado.getSelectedItem().toString().toLowerCase();
+        // Se actualiza la tabla con el nuevo filtro.
+        actualizarTabla();
     }//GEN-LAST:event_cmbEstadoActionPerformed
-
-    private void chbActiveActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_chbActiveActionPerformed
-        if (chbActive.isSelected()) {
-            finalState = "activo";
-        }
-        if (!chbActive.isSelected()) {
-            finalState = "inactivo";
-        }
-    }//GEN-LAST:event_chbActiveActionPerformed
 
     private void btnImprimirActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnImprimirActionPerformed
         try {
@@ -503,7 +561,7 @@ public class Caballos extends javax.swing.JDialog {
             if (!jrxmlFile.exists()) {
                 throw new FileNotFoundException("No se encontró el .jrxml en: " + ruta);
             }
-            
+
             DefaultTableModel original = (DefaultTableModel) tblCaballos.getModel();
             int[] colsNoPermitidas = {};
             List<Integer> colsPermitidas = new ArrayList<>();
@@ -523,7 +581,12 @@ public class Caballos extends javax.swing.JDialog {
             for (int row = 0; row < original.getRowCount(); row++) {
                 Object[] fila = new Object[colsPermitidas.size()];
                 for (int i = 0; i < colsPermitidas.size(); i++) {
-                    fila[i] = original.getValueAt(row, colsPermitidas.get(i));
+
+                    // Se obtiene el valor de la celda
+                    Object valor = original.getValueAt(row, colsPermitidas.get(i));
+
+                    // CORRECCIÓN: Si el valor es nulo, se usa una cadena vacía "", si no, se usa el valor original.
+                    fila[i] = (valor == null) ? "" : valor;
                 }
                 filtrado.addRow(fila);
             }
@@ -653,48 +716,44 @@ public class Caballos extends javax.swing.JDialog {
     }//GEN-LAST:event_btnImprimirActionPerformed
 
     private void btnExcelActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnExcelActionPerformed
-        DefaultTableModel model = (DefaultTableModel) tblCaballos.getModel();
-        if (model.getRowCount() == 0) {
-            JOptionPane.showMessageDialog(this,
-                    "La tabla está vacía. No se puede exportar un Excel sin datos.",
-                    "Tabla vacía",
-                    JOptionPane.WARNING_MESSAGE);
-            return;
-        }
-        
-        Set<Integer> columnsToSkip = Set.of(0);
-        
-        JFileChooser chooser = new JFileChooser();
-        chooser.setDialogTitle("Guardar Excel");
-        chooser.setApproveButtonText("Guardar");
-        // Filtro opcional para que solo se muestre .xlsx
-        chooser.setFileFilter(new FileNameExtensionFilter("Excel Workbook (*.xlsx)", "xlsx"));
-        chooser.setSelectedFile(new File("Caballos.xlsx"));
-
-        int opcion = chooser.showSaveDialog(this);
-        if (opcion != JFileChooser.APPROVE_OPTION) {
-            return;  // cancelado
-        }
-
-        File destino = chooser.getSelectedFile();
-        if (!destino.getName().toLowerCase().endsWith(".xlsx")) {
-            destino = new File(destino.getParentFile(), destino.getName() + ".xlsx");
-        }
-
         try {
-            Export_Excel.export(tblCaballos,
-                    "Caballos",
-                    destino.getAbsolutePath(), columnsToSkip
-            );
-            // Abrir automáticamente
-            if (Desktop.isDesktopSupported()) {
-                Desktop.getDesktop().open(destino);
+            // 1. Obtener los datos FRESCOS desde el controlador.
+            List<Caballos_Model> datos = controller.listarCaballos(txtBuscar.getText(), stateFilter);
+
+            if (datos.isEmpty()) {
+                JOptionPane.showMessageDialog(this, "No hay datos para exportar.", "Tabla Vacía", JOptionPane.WARNING_MESSAGE);
+                return;
             }
-        } catch (Exception ex) {
-            JOptionPane.showMessageDialog(this,
-                    "Error al exportar:\n" + ex.getMessage(),
-                    "Error", JOptionPane.ERROR_MESSAGE);
-            ex.printStackTrace();
+
+            // 2. Pedir al usuario la ubicación del archivo.
+            JFileChooser chooser = new JFileChooser();
+            chooser.setDialogTitle("Guardar como Excel");
+            chooser.setFileFilter(new FileNameExtensionFilter("Excel Workbook (*.xlsx)", "xlsx"));
+            chooser.setSelectedFile(new File("Reporte_Caballos.xlsx"));
+            if (chooser.showSaveDialog(this) != JFileChooser.APPROVE_OPTION) {
+                return; // El usuario canceló.
+            }
+
+            // 3. Preparar los datos en el formato genérico que el exportador necesita.
+            List<String> headers = List.of("Caballo", "Jinete", "Observación", "Estado");
+            List<List<Object>> dataRows = new ArrayList<>();
+            for (Caballos_Model caballo : datos) {
+                dataRows.add(Arrays.asList(
+                        caballo.getIdcaballos(),
+                        caballo.getCaballos(),
+                        caballo.getJinete(),
+                        caballo.getObservacion(),
+                        caballo.getFk_estados() == 1 ? "Activo" : "Inactivo"
+                ));
+            }
+
+            // 4. Llamar al exportador genérico.
+            ExcelExporter.export(headers, dataRows, "Caballos", chooser.getSelectedFile().getAbsolutePath());
+
+            JOptionPane.showMessageDialog(this, "Excel exportado exitosamente.", "Éxito", JOptionPane.INFORMATION_MESSAGE);
+
+        } catch (ServiceException | IOException e) {
+            JOptionPane.showMessageDialog(this, "Error al exportar a Excel:\n" + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
         }
     }//GEN-LAST:event_btnExcelActionPerformed
 
@@ -745,22 +804,6 @@ public class Caballos extends javax.swing.JDialog {
         });
     }
 
-    private boolean validateFields() {
-        if (txtCaballos.getText().length() == 0) {
-            txtCaballos.setText("Sin datos");
-        }
-
-        if (txtJinete.getText().length() == 0) {
-            txtJinete.setText("Sin datos");
-        }
-
-        if (atxtObservacion.getText().length() == 0) {
-            atxtObservacion.setText("Sin datos");
-        }
-
-        return true;
-    }
-
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JTextArea atxtObservacion;
     private javax.swing.JButton btnCancel;
@@ -791,72 +834,4 @@ public class Caballos extends javax.swing.JDialog {
     private javax.swing.JTextField txtNumero;
     // End of variables declaration//GEN-END:variables
 
-    private void save(String caballos, String jinete, String observacion) {
-        if (validateFields()) {
-            finalState = "activo";
-            idestado = State_Controller.getEstadoId(finalState, Run.model);
-
-            controller.createCaballos(caballos, jinete, observacion, idestado);
-
-            JOptionPane.showMessageDialog(null, "Caballo ingresado exitosamente!", "Hecho!", JOptionPane.INFORMATION_MESSAGE);
-            limpiar();
-            txtNumero.setText(String.valueOf(controller.getMaxCodigo()));
-            txtCaballos.requestFocus();
-            showCaballos("", stateFilter);
-        }
-    }
-
-    private void update(int id, String caballos, String jinete, String observacion) {
-        if (initialState.equals("activo") && finalState.equals("inactivo")) {
-            if (txtIdcaballos.getText().length() == 0) {
-                JOptionPane.showMessageDialog(null, "Seleccione un caballo para desactivar.", "Advertencia!", JOptionPane.WARNING_MESSAGE);
-            } else {
-                String[] opciones = {"Sí", "No"};
-                int respuesta = JOptionPane.showOptionDialog(
-                        this,
-                        "El caballo será desactivado",
-                        "Desactivar?",
-                        JOptionPane.YES_NO_OPTION,
-                        JOptionPane.QUESTION_MESSAGE,
-                        null,
-                        opciones,
-                        opciones[0]
-                );
-
-                if (respuesta == JOptionPane.YES_OPTION) {
-                    idestado = State_Controller.getEstadoId(finalState, Run.model);
-                }
-            }
-        } else if (initialState.equals("inactivo") && finalState.equals("activo")) {
-            if (txtIdcaballos.getText().length() == 0) {
-                JOptionPane.showMessageDialog(null, "Seleccione un caballo para activar.", "Advertencia!", JOptionPane.WARNING_MESSAGE);
-            } else {
-                String[] opciones = {"Sí", "No"};
-                int respuesta = JOptionPane.showOptionDialog(
-                        this,
-                        "El caballo será activado",
-                        "Activar?",
-                        JOptionPane.YES_NO_OPTION,
-                        JOptionPane.QUESTION_MESSAGE,
-                        null,
-                        opciones,
-                        opciones[0]
-                );
-
-                if (respuesta == JOptionPane.YES_OPTION) {
-                    idestado = State_Controller.getEstadoId(finalState, Run.model);
-                }
-            }
-        } else {
-            idestado = State_Controller.getEstadoId(initialState, Run.model);
-        }
-
-        controller.updateCaballos(id, caballos, jinete, observacion, idestado);
-
-        JOptionPane.showMessageDialog(null, "Caballo actualizado exitosamente!", "Hecho!", JOptionPane.INFORMATION_MESSAGE);
-        limpiar();
-        txtNumero.setText(String.valueOf(controller.getMaxCodigo()));
-        txtCaballos.requestFocus();
-        showCaballos("", stateFilter);
-    }
 }

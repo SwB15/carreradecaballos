@@ -1,384 +1,303 @@
 package Repository;
 
 import Config.DataSource;
+import Model.MovimientoParaVista_DTO;
 import Model.Movimientos_Model;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Types;
-import java.text.DecimalFormat;
-import java.text.ParseException;
-import java.text.SimpleDateFormat;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.List;
-import java.util.logging.Level;
-import java.util.logging.Logger;
-import javax.swing.table.DefaultTableModel;
 
 /**
- *
- * @author SwichBlade15
+ * Gestiona el acceso a la base de datos para la entidad Movimientos. Se enfoca
+ * en operaciones CRUD y consultas, devolviendo objetos de Modelo/DTO.
  */
 public class Movimientos_Repository {
 
-    DecimalFormat formateador14 = new DecimalFormat("#,###.###");
-    String sql = "";
-    PreparedStatement pst = null;
-
-//********************************Begin of Insert, Update, Disable********************************
-    public boolean insert(Movimientos_Model model) {
+    /**
+     * Inserta un nuevo movimiento en la base de datos.
+     *
+     * @param model El objeto Movimientos_Model a insertar.
+     * @throws SQLException Si ocurre un error de base de datos.
+     */
+    public void insert(Movimientos_Model model) throws SQLException {
         String sql = "INSERT INTO movimientos(fecha, monto, descripcion, fk_apostadores, fk_apuestas, fk_tipomovimientos, fk_carreras) VALUES(?,?,?,?,?,?,?)";
-        try (Connection cn = DataSource.getConnection(); PreparedStatement pst = cn.prepareStatement(sql)) {
-
+        try (Connection conn = DataSource.getConnection(); PreparedStatement pst = conn.prepareStatement(sql)) {
             int i = 1;
-            pst.setString(i++, model.getFecha());
-            pst.setInt(i++, model.getMonto()); // Si monto puede tener decimales, usar setDouble o setBigDecimal
-            pst.setString(i++, model.getObservacion());
-
-            if (model.getFk_apostadores() != null) {
-                pst.setInt(i++, model.getFk_apostadores());
-            } else {
-                pst.setNull(i++, Types.INTEGER);
-            }
-
-            if (model.getFk_apuestas() != null) {
-                pst.setInt(i++, model.getFk_apuestas());
-            } else {
-                pst.setNull(i++, Types.INTEGER);
-            }
-
-            if (model.getFk_tipomovimientos() != null) {
-                pst.setInt(i++, model.getFk_tipomovimientos());
-            } else {
-                pst.setNull(i++, Types.INTEGER);
-            }
-            
-            if (model.getFk_carreras() != null) {
-                pst.setInt(i++, model.getFk_carreras());
-            } else {
-                pst.setNull(i++, Types.INTEGER);
-            }
-
-            int N = pst.executeUpdate();
-            return N != 0;
-        } catch (SQLException ex) {
-            Logger.getLogger(Movimientos_Repository.class.getName()).log(Level.SEVERE, "Error al insertar movimiento", ex);
-            return false;
-        }
-    }
-
-    public boolean update(Movimientos_Model model) {
-        sql = "UPDATE movimientos SET fecha = ?, monto = ?, descripcion = ?, fk_apostadores = ?, fk_apuestas = ?, fk_tipomovimientos = ?, fk_carreras = ? WHERE idmovimientos = ?";
-        try (Connection cn = DataSource.getConnection()) {
-            int i = 1;
-            pst = cn.prepareStatement(sql);
-            pst.setString(i++, model.getFecha());
+            pst.setObject(i++, model.getFecha()); // Se usa setObject para LocalDateTime
             pst.setInt(i++, model.getMonto());
-            pst.setString(i++, model.getObservacion());
-
-            if (model.getFk_apostadores() != null) {
-                pst.setInt(i++, model.getFk_apostadores());
-            } else {
-                pst.setNull(i++, Types.INTEGER);
-            }
-
-            if (model.getFk_apuestas() != null) {
-                pst.setInt(i++, model.getFk_apuestas());
-            } else {
-                pst.setNull(i++, Types.INTEGER);
-            }
-
-            if (model.getFk_tipomovimientos() != null) {
-                pst.setInt(i++, model.getFk_tipomovimientos());
-            } else {
-                pst.setNull(i++, Types.INTEGER);
-            }
-            
-            if (model.getFk_carreras() != null) {
-                pst.setInt(i++, model.getFk_carreras());
-            } else {
-                pst.setNull(i++, Types.INTEGER);
-            }
-
-            pst.setInt(i++, model.getIdmovimientos());
-
-            int N = pst.executeUpdate();
-            return N != 0;
-        } catch (SQLException ex) {
-            Logger.getLogger(Caballos_Repository.class.getName()).log(Level.SEVERE, null, ex);
-            return false;
+            pst.setString(i++, model.getDescripcion());
+            setNullableInt(pst, i++, model.getFk_apostadores());
+            setNullableInt(pst, i++, model.getFk_apuestas());
+            setNullableInt(pst, i++, model.getFk_tipomovimientos());
+            setNullableInt(pst, i++, model.getFk_carreras());
+            pst.executeUpdate();
         }
     }
 
-    public int deleteMovimientosporcarrera(int raceId) throws SQLException {
-        sql = """
-        DELETE FROM movimientos
-         WHERE fk_tipomovimientos IN (5,6)
-           AND fk_apostadores IN (
-               SELECT DISTINCT fk_apostadores
-                 FROM apuestas
-                WHERE fk_carreras = ?
-           )
-        """;
-        try (Connection conn = DataSource.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
+    /**
+     * Inserta un nuevo movimiento usando una conexión existente (para
+     * transacciones).
+     *
+     * @param conn La conexión de la transacción actual.
+     * @param model El objeto Movimientos_Model a insertar.
+     * @throws SQLException Si ocurre un error de base de datos.
+     */
+    public void insert(Connection conn, Movimientos_Model model) throws SQLException {
+        String sql = "INSERT INTO movimientos(fecha, monto, descripcion, fk_apostadores, fk_apuestas, fk_tipomovimientos, fk_carreras) VALUES(?,?,?,?,?,?,?)";
+        try (PreparedStatement pst = conn.prepareStatement(sql)) {
             int i = 1;
-            ps.setInt(i++, raceId);
-            return ps.executeUpdate();
+            pst.setObject(i++, model.getFecha());
+            pst.setInt(i++, model.getMonto());
+            pst.setString(i++, model.getDescripcion());
+            setNullableInt(pst, i++, model.getFk_apostadores());
+            setNullableInt(pst, i++, model.getFk_apuestas());
+            setNullableInt(pst, i++, model.getFk_tipomovimientos());
+            setNullableInt(pst, i++, model.getFk_carreras());
+            pst.executeUpdate();
+        }
+    }
+    
+    public List<Movimientos_Model> findMovimientosDeResultadosPorCarrera(Connection conn, int idCarrera) throws SQLException {
+    List<Movimientos_Model> lista = new ArrayList<>();
+    // 5=Ganancia Neta, 7=Apuesta Perdida
+    String sql = "SELECT * FROM movimientos WHERE fk_carreras = ? AND fk_tipomovimientos IN (5, 7)"; 
+    try (PreparedStatement pst = conn.prepareStatement(sql)) {
+        pst.setInt(1, idCarrera);
+        try (ResultSet rs = pst.executeQuery()) {
+            while (rs.next()) {
+                lista.add(new Movimientos_Model(
+                    rs.getInt("idmovimientos"), rs.getObject("fecha", LocalDate.class),
+                    rs.getInt("monto"), rs.getString("descripcion"),
+                    rs.getInt("fk_apostadores"), (Integer) rs.getObject("fk_apuestas"),
+                    rs.getInt("fk_tipomovimientos"), (Integer) rs.getObject("fk_carreras")
+                ));
+            }
+        }
+    }
+    return lista;
+}
+
+
+    /**
+     * Elimina movimientos de ganancias y devoluciones asociados a una carrera.
+     *
+     * @param idCarrera El ID de la carrera cuyos movimientos se eliminarán.
+     * @throws SQLException Si ocurre un error de base de datos.
+     */
+    public void deleteMovimientosDeResultadosPorCarrera(int idCarrera) throws SQLException {
+        String sql = "DELETE FROM movimientos WHERE fk_carreras = ? AND fk_tipomovimientos IN (5, 6)";
+        try (Connection conn = DataSource.getConnection(); PreparedStatement pst = conn.prepareStatement(sql)) {
+            pst.setInt(1, idCarrera);
+            pst.executeUpdate();
         }
     }
 
-    public List<Movimientos_Model> calcularMovimientosPorCarrera(int raceId, String fecha) throws SQLException {
-        sql = """
-    WITH
-      race AS (
-        SELECT idganador
-        FROM carreras
-        WHERE idcarreras = ?
-      ),
-      pool AS (
-        -- sólo los perdedores de aquellos que no ganaron ninguna apuesta
-        SELECT COALESCE(SUM(monto),0) AS pool_monto
-        FROM apuestas
-        WHERE fk_carreras = ?
-          AND fk_caballos <> (SELECT idganador FROM race)
-          AND fk_apostadores NOT IN (
-            SELECT fk_apostadores
-            FROM apuestas
-            WHERE fk_carreras = ?
-              AND fk_caballos = (SELECT idganador FROM race)
-          )
-      ),
-      total_win AS (
-        SELECT COALESCE(SUM(monto),0) AS win_monto
-        FROM apuestas
-        WHERE fk_carreras = ?
-          AND fk_caballos = (SELECT idganador FROM race)
-      )
-    SELECT
-      a.fk_apostadores    AS idapostador,
-      -- stake perdido en apuestas sobre otros caballos
-      SUM(CASE WHEN a.fk_caballos <> (SELECT idganador FROM race)
-               THEN a.monto ELSE 0 END)       AS stake_perdido,
-      -- stake apostado al caballo ganador
-      SUM(CASE WHEN a.fk_caballos = (SELECT idganador FROM race)
-               THEN a.monto ELSE 0 END)       AS stake_ganado,
-      p.pool_monto,
-      tw.win_monto
-    FROM apuestas a
-    CROSS JOIN pool p
-    CROSS JOIN total_win tw
-    WHERE a.fk_carreras = ?
-    GROUP BY a.fk_apostadores;
+    public List<MovimientoParaVista_DTO> findMovimientosParaVista(String apostadorSearch, String tipoMovimientoSearch,
+            LocalDate dateFrom, LocalDate dateTo) throws SQLException {
+
+        System.out.println("\n--- REPOSITORY (Movimientos): Buscando movimientos para la vista ---");
+        System.out.println("1. Filtros recibidos:");
+        System.out.println("   - Búsqueda Apostador: '" + apostadorSearch + "'");
+        System.out.println("   - Tipo Movimiento: '" + tipoMovimientoSearch + "'");
+        System.out.println("   - Fecha Desde: " + dateFrom);
+        System.out.println("   - Fecha Hasta: " + dateTo);
+
+        List<MovimientoParaVista_DTO> resultados = new ArrayList<>();
+        String sql = """
+        SELECT m.*, a.nombre AS apostador, tm.descripcion AS tipo_movimiento,
+               c.nombre AS nombre_carrera
+        FROM movimientos m
+        JOIN apostadores a ON m.fk_apostadores = a.idapostadores
+        JOIN tipomovimientos tm ON m.fk_tipomovimientos = tm.idtipomovimientos
+        LEFT JOIN carreras c ON m.fk_carreras = c.idcarreras
+        WHERE a.nombre LIKE ? AND tm.descripcion LIKE ?
     """;
 
-        List<Movimientos_Model> lista = new ArrayList<>();
-        try (Connection cn = DataSource.getConnection(); PreparedStatement pst = cn.prepareStatement(sql)) {
-            // seteamos los 5 “?”
-            pst.setInt(1, raceId);
-            pst.setInt(2, raceId);
-            pst.setInt(3, raceId);
-            pst.setInt(4, raceId);
-            pst.setInt(5, raceId);
-
-            try (ResultSet rs = pst.executeQuery()) {
-                while (rs.next()) {
-                    int idApo = rs.getInt("idapostador");
-                    int stakePerd = rs.getInt("stake_perdido");
-                    int stakeGan = rs.getInt("stake_ganado");
-                    int pool = rs.getInt("pool_monto");
-                    int totalWin = rs.getInt("win_monto");
-
-                    // Si no apostó al ganador, no hay nada que devolver ni premiar
-                    if (stakeGan == 0) {
-                        continue;
-                    }
-
-                    // 1) Devolución del stake de la apuesta ganadora
-                    Movimientos_Model mStakeGan = new Movimientos_Model();
-                    mStakeGan.setFecha(fecha);
-                    mStakeGan.setMonto(stakeGan);
-                    mStakeGan.setObservacion("Devolución stake ganador");
-                    mStakeGan.setFk_apostadores(idApo);
-                    mStakeGan.setFk_apuestas(null);
-                    mStakeGan.setFk_tipomovimientos(6);  // devolución
-                    lista.add(mStakeGan);
-
-                    // 2) Devolución del stake perdido (solo si hizo más de una apuesta)
-                    if (stakePerd > 0) {
-                        Movimientos_Model mObviada = new Movimientos_Model();
-                        mObviada.setFecha(fecha);
-                        mObviada.setMonto(stakePerd);
-                        mObviada.setObservacion("Devolución stake obviado");
-                        mObviada.setFk_apostadores(idApo);
-                        mObviada.setFk_apuestas(null);
-                        mObviada.setFk_tipomovimientos(6);  // devolución
-                        lista.add(mObviada);
-                    }
-
-                    // 3) Premio neto: 90% del pool prorrateado
-                    if (totalWin > 0) {
-                        int premioNeto = (int) Math.round(pool * 0.90 * (double) stakeGan / totalWin);
-                        Movimientos_Model mPremio = new Movimientos_Model();
-                        mPremio.setFecha(fecha);
-                        mPremio.setMonto(premioNeto);
-                        mPremio.setObservacion("Apuesta ganada (neto)");
-                        mPremio.setFk_apostadores(idApo);
-                        mPremio.setFk_apuestas(null);
-                        mPremio.setFk_tipomovimientos(5);  // apuesta_ganada
-                        lista.add(mPremio);
-                    }
-                }
-            }
+        if (dateFrom != null && dateTo != null) {
+            sql += " AND m.fecha BETWEEN ? AND ?";
         }
-        return lista;
-    }
-//******************************** End of Insert, Update, Disable ********************************  
+        sql += " ORDER BY m.idmovimientos DESC";
 
-//********************************Begin of Display Methods********************************
-    public DefaultTableModel showMovimientos(String apostadorSearch, String tipoMovimientoSearch, String dateFrom, String dateTo) {
-        boolean filtrarFechas = dateFrom != null && !dateFrom.isBlank()
-                && dateTo != null && !dateTo.isBlank();
+        System.out.println("2. Ejecutando consulta SQL...");
+        try (Connection conn = DataSource.getConnection(); PreparedStatement pst = conn.prepareStatement(sql)) {
 
-        // Si vino “Todos”, lo convierto a cadena vacía para que LIKE '%%'  
-//        if ("Todos".equalsIgnoreCase(tipoMovimientoSearch)) {
-//            tipoMovimientoSearch = "";
-//        }
-        if (tipoMovimientoSearch.equals("Todos")) {
-            tipoMovimientoSearch = "";
-        }
-
-        String[] titles = {
-            "Id", "Fecha", "Tipo ID", "Tipo Movimiento",
-            "Monto", "Id apostadores", "Apostador", "Observacion", "Id Apuesta"
-        };
-        DefaultTableModel model = new DefaultTableModel(null, titles);
-        SimpleDateFormat formatoBD = new SimpleDateFormat("yyyy-MM-dd");
-        SimpleDateFormat formatoMostrar = new SimpleDateFormat("dd/MM/yyyy");
-
-        // Usamos text block para mayor legibilidad
-        String sSQL = """
-        SELECT
-          m.idmovimientos,
-          m.fecha,
-          tm.idtipomovimientos,
-          tm.descripcion     AS tipo_mov,
-          m.monto,
-          a.idapostadores    AS idapostadores,
-          a.nombre           AS apostador,
-          m.descripcion      AS observacion,
-          m.fk_apuestas      AS id_apuesta
-        FROM movimientos m
-        INNER JOIN apostadores a
-          ON m.fk_apostadores = a.idapostadores
-        INNER JOIN tipomovimientos tm
-          ON m.fk_tipomovimientos = tm.idtipomovimientos
-        WHERE a.nombre LIKE ? -- COLLATE NOCASE
-          AND tm.descripcion LIKE ? -- COLLATE NOCASE
-        """;
-
-        if (filtrarFechas) {
-            sSQL += " AND m.fecha BETWEEN ? AND ?";
-        }
-
-        sSQL += " ORDER BY m.idmovimientos DESC";
-
-        try (Connection cn = DataSource.getConnection(); PreparedStatement pst = cn.prepareStatement(sSQL)) {
-            int param = 1;
-            pst.setString(param++, "%" + apostadorSearch + "%");
-            pst.setString(param++, "%" + tipoMovimientoSearch + "%");
-
-            if (filtrarFechas) {
-                pst.setString(param++, dateFrom);
-                pst.setString(param++, dateTo);
+            int i = 1;
+            pst.setString(i++, "%" + apostadorSearch + "%");
+            pst.setString(i++, "%" + ("Todos".equalsIgnoreCase(tipoMovimientoSearch) ? "" : tipoMovimientoSearch) + "%");
+            if (dateFrom != null && dateTo != null) {
+                pst.setObject(i++, dateFrom);
+                pst.setObject(i++, dateTo);
             }
 
             try (ResultSet rs = pst.executeQuery()) {
-
                 while (rs.next()) {
-                    // Formateo de fecha
-                    // 1) Leemos la fecha cruda de la BD (en formato “yyyy-MM-dd”)
-                    String fechaStr = rs.getString("fecha");
+                    LocalDate fecha = rs.getObject("fecha", LocalDate.class);
 
-                    // 2) La parseamos a java.util.Date usando formatoBD
-                    String fechaFormateada;
-                    if (fechaStr != null && !fechaStr.isEmpty()) {
-                        try {
-                            Date fechaDate = formatoBD.parse(fechaStr);
-                            // 3) La volvemos a formatear con formatoMostrar
-                            fechaFormateada = formatoMostrar.format(fechaDate);
-                        } catch (ParseException ex) {
-                            // Si falla el parseo, usamos el texto tal cual
-                            fechaFormateada = fechaStr;
-                        }
-                    } else {
-                        fechaFormateada = "";
-                    }
+                    Movimientos_Model movimiento = new Movimientos_Model(
+                            rs.getInt("idmovimientos"), fecha,
+                            rs.getInt("monto"), rs.getString("descripcion"),
+                            (Integer) rs.getObject("fk_apostadores"), (Integer) rs.getObject("fk_apuestas"),
+                            (Integer) rs.getObject("fk_tipomovimientos"), (Integer) rs.getObject("fk_carreras")
+                    );
 
-                    // Lectura de columnas
-                    int idMov = rs.getInt("idmovimientos");
-                    int idTipoMov = rs.getInt("idtipomovimientos");
-                    String tipoMov = rs.getString("tipo_mov");
-                    int monto = rs.getInt("monto");
-                    String montoFmt = formateador14.format(monto);
-                    int idapostadores = rs.getInt("idapostadores");
-                    String apostador = rs.getString("apostador");
-                    String observacion = rs.getString("observacion");
-                    int idApuesta = rs.getInt("id_apuesta");
+                    String nombreApostador = rs.getString("apostador");
+                    String tipoMovimiento = rs.getString("tipo_movimiento");
+                    String nombreCarrera = rs.getString("nombre_carrera");
 
-                    model.addRow(new Object[]{
-                        idMov,
-                        fechaFormateada,
-                        idTipoMov,
-                        tipoMov,
-                        montoFmt,
-                        idapostadores,
-                        apostador,
-                        observacion,
-                        idApuesta
-                    });
+                    resultados.add(new MovimientoParaVista_DTO(movimiento, nombreApostador, tipoMovimiento, nombreCarrera));
 
+                    System.out.println(String.format("   -> Fila encontrada: [ID: %d, Fecha: %s, Monto: %d, Apostador: %s, Carrera: %s]",
+                            movimiento.getIdMovimiento(), fecha, movimiento.getMonto(), nombreApostador, nombreCarrera));
                 }
             }
-        } catch (SQLException e) {
-            Logger.getLogger(Apostadores_Repository.class
-                    .getName())
-                    .log(Level.SEVERE, "Error al consultar movimientos", e);
         }
-        return model;
+        System.out.println("3. Consulta finalizada. Total de movimientos encontrados: " + resultados.size());
+        System.out.println("--- REPOSITORY (Movimientos): Fin de la búsqueda ---");
+        return resultados;
     }
 
-    public List<Movimientos_Model> getMovimientosPorCarrera(int idCarrera) throws SQLException {
+    public List<Movimientos_Model> findAllOrderByFecha() throws SQLException {
         List<Movimientos_Model> lista = new ArrayList<>();
-        sql = "SELECT * FROM movimientos WHERE fk_carreras = ?";
-
-        try (Connection cn = DataSource.getConnection(); PreparedStatement pst = cn.prepareStatement(sql)) {
-            pst.setInt(1, idCarrera);
-            ResultSet rs = pst.executeQuery();
+        String sql = "SELECT * FROM movimientos ORDER BY fecha ASC, idmovimientos ASC";
+        try (Connection conn = DataSource.getConnection(); PreparedStatement pst = conn.prepareStatement(sql); ResultSet rs = pst.executeQuery()) {
             while (rs.next()) {
-                Movimientos_Model m = new Movimientos_Model();
-                m.setIdmovimientos(rs.getInt("idmovimientos"));
-                m.setFecha(rs.getString("fecha"));
-                m.setMonto(rs.getInt("monto"));
-                m.setObservacion(rs.getString("descripcion"));
-                m.setFk_apostadores(rs.getInt("fk_apostadores"));
-                m.setFk_apuestas(rs.getInt("fk_apuestas"));
-                m.setFk_tipomovimientos(rs.getInt("fk_tipomovimientos"));
-                m.setFk_carreras(rs.getInt("fk_carreras"));
-                lista.add(m);
+                // --- Se aplica la misma corrección aquí ---
+                String fechaStr = rs.getString("fecha");
+                LocalDate fecha = null;
+                if (fechaStr != null && !fechaStr.isBlank()) {
+                    try {
+                        fecha = LocalDate.parse(fechaStr, DateTimeFormatter.ofPattern("yyyy-MM-dd"));
+                    } catch (Exception e) {
+                        System.err.println("No se pudo parsear la fecha: " + fechaStr);
+                    }
+                }
+
+                lista.add(new Movimientos_Model(
+                        rs.getInt("idmovimientos"), fecha,
+                        rs.getInt("monto"), rs.getString("descripcion"),
+                        rs.getInt("fk_apostadores"), (Integer) rs.getObject("fk_apuestas"),
+                        rs.getInt("fk_tipomovimientos"), (Integer) rs.getObject("fk_carreras")
+                ));
             }
         }
         return lista;
     }
 
-    public int getsaldoapostador(int idApostador) throws SQLException {
-        sql = "SELECT saldo FROM apostadores WHERE idapostadores = ?";
-        try (Connection cn = DataSource.getConnection(); PreparedStatement ps = cn.prepareStatement(sql)) {
-            ps.setInt(1, idApostador);
-            try (ResultSet rs = ps.executeQuery()) {
-                return rs.next() ? rs.getInt("saldo") : 0;
+    /**
+     * Inserta una lista de movimientos en un solo lote (batch). Mucho más
+     * eficiente que insertar uno por uno.
+     *
+     * @param movimientos La lista de movimientos a insertar.
+     * @throws SQLException Si ocurre un error de base de datos.
+     */
+    public void insertBatch(List<Movimientos_Model> movimientos) throws SQLException {
+        String sql = "INSERT INTO movimientos(fecha, monto, descripcion, fk_apostadores, fk_apuestas, fk_tipomovimientos, fk_carreras) VALUES(?,?,?,?,?,?,?)";
+        try (Connection conn = DataSource.getConnection(); PreparedStatement pst = conn.prepareStatement(sql)) {
+
+            for (Movimientos_Model model : movimientos) {
+                int i = 1;
+                pst.setObject(i++, model.getFecha());
+                pst.setInt(i++, model.getMonto());
+                pst.setString(i++, model.getDescripcion());
+                setNullableInt(pst, i++, model.getFk_apostadores());
+                setNullableInt(pst, i++, model.getFk_apuestas());
+                setNullableInt(pst, i++, model.getFk_tipomovimientos());
+                setNullableInt(pst, i++, model.getFk_carreras());
+                pst.addBatch(); // Se agrega la operación al lote
+            }
+            pst.executeBatch(); // Se ejecuta el lote de operaciones
+        }
+    }
+    
+    /**
+     * Helper para asignar un valor Integer que puede ser nulo a un
+     * PreparedStatement.
+     */
+    private void setNullableInt(PreparedStatement pst, int index, Integer value) throws SQLException {
+        if (value != null) {
+            pst.setInt(index, value);
+        } else {
+            pst.setNull(index, Types.INTEGER);
+        }
+    }
+
+    // Añade estos métodos a tu clase Movimientos_Repository
+    /**
+     * Inserta una lista de movimientos en un solo lote (batch) usando una
+     * conexión existente. Es mucho más eficiente que insertar uno por uno
+     * dentro de una transacción.
+     *
+     * @param conn La conexión de la transacción actual.
+     * @param movimientos La lista de movimientos a insertar.
+     * @throws SQLException Si ocurre un error de base de datos.
+     */
+    public void insertBatch(Connection conn, List<Movimientos_Model> movimientos) throws SQLException {
+        String sql = "INSERT INTO movimientos(fecha, monto, descripcion, fk_apostadores, fk_apuestas, fk_tipomovimientos, fk_carreras) VALUES(?,?,?,?,?,?,?)";
+        try (PreparedStatement pst = conn.prepareStatement(sql)) {
+
+            for (Movimientos_Model model : movimientos) {
+                int i = 1;
+                pst.setObject(i++, model.getFecha());
+                pst.setInt(i++, model.getMonto());
+                pst.setString(i++, model.getDescripcion());
+                setNullableInt(pst, i++, model.getFk_apostadores());
+                setNullableInt(pst, i++, model.getFk_apuestas());
+                setNullableInt(pst, i++, model.getFk_tipomovimientos());
+                setNullableInt(pst, i++, model.getFk_carreras());
+                pst.addBatch(); // Se agrega la operación al lote
+            }
+            pst.executeBatch(); // Se ejecuta el lote de operaciones
+        }
+    }
+
+    /**
+     * Elimina movimientos de ganancias y devoluciones asociados a una carrera
+     * usando una conexión existente.
+     *
+     * @param conn La conexión de la transacción actual.
+     * @param idCarrera El ID de la carrera cuyos movimientos se eliminarán.
+     * @throws SQLException Si ocurre un error de base de datos.
+     */
+    public void deleteMovimientosDeResultadosPorCarrera(Connection conn, int idCarrera) throws SQLException {
+        String sql = "DELETE FROM movimientos WHERE fk_carreras = ? AND fk_tipomovimientos IN (5, 6)";
+        try (PreparedStatement pst = conn.prepareStatement(sql)) {
+            pst.setInt(1, idCarrera);
+            pst.executeUpdate();
+        }
+    }
+
+    public List<Movimientos_Model> findByApostadorId(int idApostador) throws SQLException {
+        List<Movimientos_Model> lista = new ArrayList<>();
+        String sql = "SELECT * FROM movimientos WHERE fk_apostadores = ? ORDER BY fecha ASC";
+        try (Connection conn = DataSource.getConnection(); PreparedStatement pst = conn.prepareStatement(sql)) {
+            pst.setInt(1, idApostador);
+            try (ResultSet rs = pst.executeQuery()) {
+                while (rs.next()) {
+                    // Se usa la conversión manual y segura de fecha
+                    String fechaStr = rs.getString("fecha");
+                    LocalDate fecha = null;
+                    if (fechaStr != null && !fechaStr.isBlank()) {
+                        try {
+                            fecha = LocalDate.parse(fechaStr, DateTimeFormatter.ofPattern("yyyy-MM-dd"));
+                        } catch (Exception e) {
+                            /* Log error */ }
+                    }
+
+                    lista.add(new Movimientos_Model(
+                            rs.getInt("idmovimientos"), fecha,
+                            rs.getInt("monto"), rs.getString("descripcion"),
+                            rs.getInt("fk_apostadores"), (Integer) rs.getObject("fk_apuestas"),
+                            rs.getInt("fk_tipomovimientos"), (Integer) rs.getObject("fk_carreras")
+                    ));
+                }
             }
         }
+        return lista;
     }
 }

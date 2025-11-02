@@ -1,0 +1,10 @@
+Services\Balance_ServicesTest.class
+Services\Movimientos_ServicesTest.class
+Model\Apuestas_ModelTest.class
+Services\Apuestas_ServicesTest.class
+Repository\Apuestas_RepositoryTest.class
+Services\Caballos_ServicesTest.class
+Services\Abonos_ServicesTest.class
+Services\Carreras_ServicesTest.class
+Services\Apostadores_ServicesTest.class
+Services\Estados_ServicesTest.class

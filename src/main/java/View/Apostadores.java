@@ -1,37 +1,38 @@
 package View;
 
 import Config.AppPaths;
-import Config.Export_Excel;
-import Config.Run;
 import Controller.Apostadores_Controller;
-import Controller.Movimientos_Controller;
-import Controller.State_Controller;
+import Model.ApostadorParaVista_DTO;
+import Services.Exceptions.ServiceException;
+import Utils.ExcelExporter;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.Container;
 import java.awt.event.KeyEvent;
-import java.util.Set;
 import javax.swing.JOptionPane;
 import javax.swing.JTable;
 import javax.swing.table.DefaultTableModel;
-import java.awt.Frame;               // para la referencia a la ventana padre
-import java.awt.Desktop;             // para abrir el archivo con la app predeterminada
+import java.awt.Frame;
 import java.awt.Dimension;
 import java.awt.Graphics2D;
 import java.awt.Image;
 import java.awt.Toolkit;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.awt.image.BufferedImage;
-import java.io.File;                 // para construir la ruta del fichero
+import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
-import java.nio.file.Paths;
+import java.text.DecimalFormat;
+import java.text.DecimalFormatSymbols;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -44,7 +45,9 @@ import javax.swing.JButton;
 import javax.swing.JDialog;
 import javax.swing.JFileChooser;
 import javax.swing.JPanel;
+import javax.swing.SwingUtilities;
 import javax.swing.filechooser.FileNameExtensionFilter;
+import javax.swing.table.TableRowSorter;
 import net.sf.jasperreports.engine.JRException;
 import net.sf.jasperreports.engine.JasperCompileManager;
 import net.sf.jasperreports.engine.JasperFillManager;
@@ -62,37 +65,142 @@ import net.sf.jasperreports.view.JasperViewer;
  */
 public class Apostadores extends javax.swing.JDialog {
 
-    Apostadores_Controller controller = new Apostadores_Controller();
-    Movimientos_Controller movimientoscontroller = new Movimientos_Controller();
-
-    private String initialState = "", finalState = "", stateFilter = "todos";
-    private String id = "", desde = "", hasta = "";
-    private int idestado;
+    private final Apostadores_Controller controller;
+    private String stateFilter = "todos";
+    private final DecimalFormat formateador;
 
     public Apostadores(java.awt.Frame parent, boolean modal) {
         super(parent, modal);
         initComponents();
         this.setLocationRelativeTo(null);
+        // Se inicializa el controlador.
+        this.controller = new Apostadores_Controller();
+        DecimalFormatSymbols symbols = new DecimalFormatSymbols();
+        symbols.setGroupingSeparator('.');
+        this.formateador = new DecimalFormat("#,###", symbols);
+
+        // Configuración inicial de la UI
         txtIdapostadores.setVisible(false);
         txtSaldo.setEditable(false);
         txtSaldo.setBackground(Color.white);
         txtNumero.setEditable(false);
-        txtNumero.setText(String.valueOf(controller.getMaxCodigo()));
-        txtNumero.transferFocus();
+        txtNumero.setText("Nuevo"); // Es mejor no pre-cargar IDs desde la UI.
         txtNombre.requestFocus();
-        showApostadores("", stateFilter);
         btnModificar.setEnabled(false);
-        btnActualizarOculto.setVisible(false);
+
+        // Se llama al nuevo método para cargar los datos iniciales.
+        actualizarTabla();
+
+        tblApostadores.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseReleased(MouseEvent e) {
+                int row = tblApostadores.rowAtPoint(e.getPoint());
+                if (row >= 0 && row < tblApostadores.getRowCount()) {
+                    // Seleccionar la fila bajo el cursor, sea clic derecho o izquierdo
+                    tblApostadores.setRowSelectionInterval(row, row);
+                } else {
+                    tblApostadores.clearSelection();
+                }
+
+                // Si es un clic DERECHO (PopupTrigger) y hay una fila seleccionada
+                if (e.isPopupTrigger() && tblApostadores.getSelectedRowCount() != 0) {
+                    // Muestra el JPopupMenu que ya tienes diseñado (pmnuApostadores)
+                    pmnuApostadores.show(e.getComponent(), e.getX(), e.getY());
+                }
+            }
+
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                // Si es un clic IZQUIERDO normal (no doble clic)
+                if (SwingUtilities.isLeftMouseButton(e) && e.getClickCount() == 1) {
+                    cargarDatosEnFormulario();
+                }
+            }
+        });
     }
 
-    private void showApostadores(String search, String stateFilter) {
+    private void cargarDatosEnFormulario() {
+        int filaSeleccionada = tblApostadores.getSelectedRow();
+        if (filaSeleccionada == -1) {
+            return;
+        }
+
+        // Se convierten los índices de la vista al modelo por si la tabla está ordenada.
+        int filaModelo = tblApostadores.convertRowIndexToModel(filaSeleccionada);
+
+        // Se obtienen los datos del TableModel.
+        String id = tblApostadores.getModel().getValueAt(filaModelo, 0).toString();
+        String cedula = (String) tblApostadores.getModel().getValueAt(filaModelo, 1);
+        String nombre = (String) tblApostadores.getModel().getValueAt(filaModelo, 2);
+        String saldo = tblApostadores.getModel().getValueAt(filaModelo, 3).toString();
+        String observacion = (String) tblApostadores.getModel().getValueAt(filaModelo, 4);
+        String estado = (String) tblApostadores.getModel().getValueAt(filaModelo, 5);
+
+        // Se rellenan los campos del formulario.
+        txtIdapostadores.setText(id);
+        txtNumero.setText(id);
+        txtCedula.setText(cedula);
+        txtNombre.setText(nombre);
+        txtSaldo.setText(saldo);
+        atxtObservacion.setText(observacion);
+        chbActive.setSelected("activo".equalsIgnoreCase(estado));
+
+        // Se habilitan los botones correspondientes.
+        btnModificar.setEnabled(true);
+        btnSave.setText("Actualizar");
+    }
+
+    private void actualizarTabla() {
+        String search = txtBuscar.getText();
+
         try {
-            DefaultTableModel model;
-            model = controller.showApostadores(search, stateFilter);
+            List<ApostadorParaVista_DTO> listaApostadores = controller.listarApostadores(search, stateFilter);
+
+            String[] titles = {"Id", "Cedula", "Apostador", "Saldo", "Observacion", "Estado", "Estado Deuda"};
+            DefaultTableModel model = new DefaultTableModel(null, titles) {
+                @Override
+                public boolean isCellEditable(int row, int column) {
+                    return false;
+                }
+
+                // Se le dice a la tabla qué columnas son numéricas para el ordenamiento.
+                @Override
+                public Class<?> getColumnClass(int columnIndex) {
+                    if (columnIndex == 3) { // Columna Saldo
+                        return Number.class;
+                    }
+                    return String.class;
+                }
+            };
+
+            // Se añaden los NÚMEROS PUROS al modelo, sin formatear.
+            for (ApostadorParaVista_DTO dto : listaApostadores) {
+                model.addRow(new Object[]{
+                    dto.getApostador().getIdapostadores(),
+                    dto.getApostador().getCedula(),
+                    dto.getApostador().getNombre(),
+                    dto.getApostador().getSaldo(), // Se pasa el número puro
+                    dto.getApostador().getObservacion(),
+                    dto.getApostador().getFk_estados() == 1 ? "Activo" : "Inactivo",
+                    dto.getEstadoDeuda()
+                });
+            }
+
             tblApostadores.setModel(model);
-            ocultar_columnas(tblApostadores);
-        } catch (Exception e) {
-            JOptionPane.showMessageDialog(null, e);
+            tblApostadores.setRowSorter(new TableRowSorter<>(model));
+
+            // Se crea una sola instancia del renderizador para reutilizarla.
+            Apostadores_TableCellRenderer renderer = new Apostadores_TableCellRenderer();
+
+            // Se le dice a la tabla que use nuestro renderer para las columnas de tipo Número.
+            tblApostadores.setDefaultRenderer(Number.class, renderer);
+            // Y también se le dice que lo use para todas las demás columnas de tipo Objeto (como los Strings).
+            tblApostadores.setDefaultRenderer(Object.class, renderer);
+
+            ocultar_columnas(tblApostadores); // Se asume que este método existe y está correcto
+
+        } catch (ServiceException e) {
+            JOptionPane.showMessageDialog(this, "Error al cargar los apostadores:\n" + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
         }
     }
 
@@ -104,20 +212,62 @@ public class Apostadores extends javax.swing.JDialog {
         table.getColumnModel().getColumn(5).setMaxWidth(80);
         table.getColumnModel().getColumn(5).setMinWidth(80);
         table.getColumnModel().getColumn(5).setPreferredWidth(80);
+
+        table.getColumnModel().getColumn(6).setMaxWidth(0);
+        table.getColumnModel().getColumn(6).setMinWidth(0);
+        table.getColumnModel().getColumn(6).setPreferredWidth(0);
     }
 
-    private void limpiar() {
+    private void openHistorial(int idApostador) {
+        try {
+            // Llama al método del controlador con fechas nulas para verificar si existe CUALQUIER historial.
+            if (controller.obtenerHistorial(idApostador, null, null).isEmpty()) {
+                JOptionPane.showMessageDialog(this, "No hay historial para este apostador.", "Información", JOptionPane.INFORMATION_MESSAGE);
+                return;
+            }
+
+            // Se obtienen los datos de la fila seleccionada (código sin cambios)
+            int filaSeleccionada = tblApostadores.getSelectedRow();
+            int filaModelo = tblApostadores.convertRowIndexToModel(filaSeleccionada);
+
+            Object nombreObj = tblApostadores.getModel().getValueAt(filaModelo, 2);
+            String nombre = (nombreObj == null) ? "" : nombreObj.toString();
+
+            Object cedulaObj = tblApostadores.getModel().getValueAt(filaModelo, 1);
+            String cedula = (cedulaObj == null) ? "" : cedulaObj.toString();
+
+            // Se pasan los datos al nuevo constructor (código sin cambios)
+            PerfilApostador dialog = new PerfilApostador((Frame) this.getParent(), true, idApostador, nombre, cedula);
+            dialog.setVisible(true);
+
+            // Refresca la tabla después de que el diálogo se cierra.
+            actualizarTabla();
+
+        } catch (ServiceException e) {
+            JOptionPane.showMessageDialog(this, "Error al abrir el historial:\n" + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    private void limpiarFormulario() {
         txtIdapostadores.setText("");
+        txtNumero.setText("Nuevo");
         txtCedula.setText("");
         txtNombre.setText("");
         txtSaldo.setText("");
         atxtObservacion.setText("");
+        chbActive.setSelected(false);
+        btnSave.setText("Guardar");
+        btnModificar.setEnabled(false);
+        txtNombre.requestFocus();
     }
 
     @SuppressWarnings("unchecked")
     // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
     private void initComponents() {
 
+        pmnuApostadores = new javax.swing.JPopupMenu();
+        pmnuHistorial = new javax.swing.JMenuItem();
+        pmnuPendientes = new javax.swing.JMenuItem();
         jPanel1 = new javax.swing.JPanel();
         txtNumero = new javax.swing.JTextField();
         jLabel1 = new javax.swing.JLabel();
@@ -136,7 +286,6 @@ public class Apostadores extends javax.swing.JDialog {
         jLabel5 = new javax.swing.JLabel();
         txtSaldo = new javax.swing.JTextField();
         btnModificar = new javax.swing.JButton();
-        btnActualizarOculto = new javax.swing.JButton();
         btnImprimir = new javax.swing.JButton();
         btnExcel = new javax.swing.JButton();
         jPanel3 = new javax.swing.JPanel();
@@ -148,6 +297,22 @@ public class Apostadores extends javax.swing.JDialog {
         jPanel2 = new javax.swing.JPanel();
         jScrollPane1 = new javax.swing.JScrollPane();
         tblApostadores = new javax.swing.JTable();
+
+        pmnuHistorial.setText("Historial");
+        pmnuHistorial.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                pmnuHistorialActionPerformed(evt);
+            }
+        });
+        pmnuApostadores.add(pmnuHistorial);
+
+        pmnuPendientes.setText("Pendientes");
+        pmnuPendientes.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                pmnuPendientesActionPerformed(evt);
+            }
+        });
+        pmnuApostadores.add(pmnuPendientes);
 
         setDefaultCloseOperation(javax.swing.WindowConstants.DISPOSE_ON_CLOSE);
         setTitle("Apostadores");
@@ -192,11 +357,6 @@ public class Apostadores extends javax.swing.JDialog {
         jLabel4.setText("Observación:");
 
         chbActive.setText("Activo");
-        chbActive.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                chbActiveActionPerformed(evt);
-            }
-        });
 
         atxtObservacion.setColumns(20);
         atxtObservacion.setRows(5);
@@ -226,13 +386,6 @@ public class Apostadores extends javax.swing.JDialog {
         btnModificar.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 btnModificarActionPerformed(evt);
-            }
-        });
-
-        btnActualizarOculto.setText("Act. Oculto");
-        btnActualizarOculto.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                btnActualizarOcultoActionPerformed(evt);
             }
         });
 
@@ -279,8 +432,7 @@ public class Apostadores extends javax.swing.JDialog {
                                         .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                                             .addComponent(txtCedula, javax.swing.GroupLayout.PREFERRED_SIZE, 100, javax.swing.GroupLayout.PREFERRED_SIZE)
                                             .addComponent(txtNombre, javax.swing.GroupLayout.PREFERRED_SIZE, 200, javax.swing.GroupLayout.PREFERRED_SIZE))))
-                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                .addComponent(btnActualizarOculto)))
+                                .addGap(0, 0, Short.MAX_VALUE)))
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                         .addComponent(jScrollPane3, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                         .addContainerGap())
@@ -291,7 +443,7 @@ public class Apostadores extends javax.swing.JDialog {
                                 .addComponent(btnImprimir, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)
                                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                                 .addComponent(btnExcel, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 364, Short.MAX_VALUE)
                                 .addComponent(chbActive)
                                 .addGap(23, 23, 23)
                                 .addComponent(btnSave)
@@ -321,8 +473,7 @@ public class Apostadores extends javax.swing.JDialog {
                                 .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                                     .addComponent(txtSaldo, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                                     .addComponent(jLabel5)
-                                    .addComponent(btnModificar)
-                                    .addComponent(btnActualizarOculto)))))
+                                    .addComponent(btnModificar)))))
                     .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                         .addComponent(txtNumero, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                         .addComponent(jLabel1))
@@ -469,12 +620,41 @@ public class Apostadores extends javax.swing.JDialog {
     }// </editor-fold>//GEN-END:initComponents
 
     private void btnSaveActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnSaveActionPerformed
-        if (txtIdapostadores.getText().length() == 0) {
-            validateFields();
-            save(txtCedula.getText(), txtNombre.getText(), atxtObservacion.getText());
-        } else {
-            validateFields();
-            update(Integer.parseInt(txtIdapostadores.getText()), txtCedula.getText(), txtNombre.getText(), atxtObservacion.getText());
+        // 1. Validar datos de entrada.
+        if (txtNombre.getText().trim().isEmpty()) {
+            JOptionPane.showMessageDialog(this, "El nombre del apostador no puede estar vacío.", "Validación", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        // 2. Recoger datos del formulario.
+        String cedula = txtCedula.getText().trim();
+        String nombre = txtNombre.getText().trim();
+        String observacion = atxtObservacion.getText().trim();
+
+        try {
+            // 3. Decidir si es una creación o una actualización.
+            if (txtIdapostadores.getText().trim().isEmpty()) {
+                // CREAR nuevo apostador
+                int fk_estados = 1;
+                controller.crearApostador(cedula, nombre, observacion, fk_estados);
+                JOptionPane.showMessageDialog(this, "Apostador creado exitosamente.", "Éxito", JOptionPane.INFORMATION_MESSAGE);
+            } else {
+                // ACTUALIZAR apostador existente
+                int fk_estados = chbActive.isSelected() ? 1 : 2;
+                int id = Integer.parseInt(txtIdapostadores.getText());
+                controller.actualizarApostador(id, cedula, nombre, observacion, fk_estados);
+                JOptionPane.showMessageDialog(this, "Apostador actualizado exitosamente.", "Éxito", JOptionPane.INFORMATION_MESSAGE);
+            }
+
+            // 4. Limpiar el formulario y refrescar la tabla.
+            limpiarFormulario();
+            actualizarTabla();
+
+        } catch (ServiceException e) {
+            // 5. Manejar errores del servicio.
+            JOptionPane.showMessageDialog(this, "Error: " + e.getMessage(), "Error de Operación", JOptionPane.ERROR_MESSAGE);
+        } catch (NumberFormatException e) {
+            JOptionPane.showMessageDialog(this, "Error: El ID del apostador es inválido.", "Error de Formato", JOptionPane.ERROR_MESSAGE);
         }
     }//GEN-LAST:event_btnSaveActionPerformed
 
@@ -483,47 +663,40 @@ public class Apostadores extends javax.swing.JDialog {
     }//GEN-LAST:event_btnCancelActionPerformed
 
     private void tblApostadoresMouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_tblApostadoresMouseClicked
-        int selectedRow = tblApostadores.getSelectedRow();
-        if (selectedRow != -1) {
-            if (evt.getClickCount() == 1) {
-                btnModificar.setEnabled(true);
-
-                int select = tblApostadores.rowAtPoint(evt.getPoint());
-                tblApostadores.setRowSelectionInterval(select, select);
-
-                id = tblApostadores.getValueAt(select, 0).toString();
-                txtIdapostadores.setText(id);
-                txtNumero.setText(String.valueOf(tblApostadores.getValueAt(select, 0)));
-                txtCedula.setText(String.valueOf(tblApostadores.getValueAt(select, 1)));
-                txtNombre.setText(String.valueOf(tblApostadores.getValueAt(select, 2)));
-                txtSaldo.setText(String.valueOf(tblApostadores.getValueAt(select, 3)));
-                atxtObservacion.setText(String.valueOf(tblApostadores.getValueAt(select, 4)));
-
-                if ("activo".equals(tblApostadores.getValueAt(select, 5).toString())) {
-                    chbActive.setSelected(true);
-                    initialState = tblApostadores.getValueAt(select, 5).toString();
-                } else {
-                    chbActive.setSelected(false);
-                    initialState = tblApostadores.getValueAt(select, 5).toString();
-                }
-            } else if (evt.getClickCount() == 2) {
-                int idApostador = Integer.parseInt(txtNumero.getText());
-
-                if (!controller.tieneHistorial(idApostador, desde, hasta)) {
-                    JOptionPane.showMessageDialog(
-                            this,
-                            "No hay historial del apostador.",
-                            "Información",
-                            JOptionPane.INFORMATION_MESSAGE
-                    );
-                    return;
-                }
-
-                // Si SÍ hay historial, abres el JDialog
-                PerfilApostador dialog = new PerfilApostador(f, true, idApostador);
-                dialog.setVisible(true);
-            }
+        int filaSeleccionada = tblApostadores.getSelectedRow();
+        if (filaSeleccionada == -1) {
+            return;
         }
+
+        // Se convierten los índices de la vista al modelo por si la tabla está ordenada.
+        int filaModelo = tblApostadores.convertRowIndexToModel(filaSeleccionada);
+
+        // Se obtienen los datos del TableModel.
+        String id = tblApostadores.getModel().getValueAt(filaModelo, 0).toString();
+        String cedula = (String) tblApostadores.getModel().getValueAt(filaModelo, 1);
+        String nombre = (String) tblApostadores.getModel().getValueAt(filaModelo, 2);
+        Object saldo = tblApostadores.getModel().getValueAt(filaModelo, 3).toString();
+        String observacion = (String) tblApostadores.getModel().getValueAt(filaModelo, 4);
+        String estado = (String) tblApostadores.getModel().getValueAt(filaModelo, 5);
+
+        // Se rellenan los campos del formulario.
+        txtIdapostadores.setText(id);
+        txtNumero.setText(id);
+        txtCedula.setText(cedula);
+        txtNombre.setText(nombre);
+        if (saldo instanceof Number) {
+            // Si el saldo es un número, se formatea.
+            txtSaldo.setText(formateador.format(saldo));
+        } else {
+            // Si no, se muestra tal cual (o vacío si es nulo).
+            txtSaldo.setText(saldo == null ? "0" : saldo.toString());
+        }
+        atxtObservacion.setText(observacion);
+        chbActive.setSelected("activo".equalsIgnoreCase(estado));
+
+        // Se habilitan los botones correspondientes.
+        btnModificar.setEnabled(true);
+        btnSave.setText("Actualizar");
     }//GEN-LAST:event_tblApostadoresMouseClicked
 
     private void txtCedulaKeyPressed(java.awt.event.KeyEvent evt) {//GEN-FIRST:event_txtCedulaKeyPressed
@@ -556,22 +729,16 @@ public class Apostadores extends javax.swing.JDialog {
     }//GEN-LAST:event_txtCedulaKeyTyped
 
     private void txtBuscarKeyReleased(java.awt.event.KeyEvent evt) {//GEN-FIRST:event_txtBuscarKeyReleased
-        showApostadores(txtBuscar.getText(), stateFilter);
+        // Se llama al nuevo método centralizado para actualizar la tabla.
+        actualizarTabla();
     }//GEN-LAST:event_txtBuscarKeyReleased
 
     private void cmbEstadoActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_cmbEstadoActionPerformed
-        stateFilter = cmbEstado.getSelectedItem().toString().toLowerCase();
-        showApostadores(txtBuscar.getText(), stateFilter);
+        // Se actualiza la variable de estado del filtro.
+        this.stateFilter = cmbEstado.getSelectedItem().toString().toLowerCase();
+        // Se llama al nuevo método centralizado.
+        actualizarTabla();
     }//GEN-LAST:event_cmbEstadoActionPerformed
-
-    private void chbActiveActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_chbActiveActionPerformed
-        if (chbActive.isSelected()) {
-            finalState = "activo";
-        }
-        if (!chbActive.isSelected()) {
-            finalState = "inactivo";
-        }
-    }//GEN-LAST:event_chbActiveActionPerformed
 
     private void atxtObservacionKeyPressed(java.awt.event.KeyEvent evt) {//GEN-FIRST:event_atxtObservacionKeyPressed
         if (evt.getKeyCode() == KeyEvent.VK_ENTER) {
@@ -589,13 +756,23 @@ public class Apostadores extends javax.swing.JDialog {
     }//GEN-LAST:event_txtSaldoKeyTyped
 
     private void btnModificarActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnModificarActionPerformed
-        AgregarSaldo dialog = new AgregarSaldo(f, true);
-        AgregarSaldo.txtApostadores.setText(txtNombre.getText());
-        AgregarSaldo.txtMontoactual.setText(txtSaldo.getText());
-        AgregarSaldo.txtIdapostadores.setText(txtIdapostadores.getText());
-        AgregarSaldo.txtDestino.setText("Apostadores");
-        dialog.setVisible(true);
+        if (txtIdapostadores.getText().isEmpty()) {
+            JOptionPane.showMessageDialog(this, "Por favor, seleccione un apostador de la tabla.", "Acción Requerida", JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
 
+        int idApostador = Integer.parseInt(txtIdapostadores.getText());
+        String nombreApostador = txtNombre.getText();
+
+        // Se abre el diálogo de AgregarSaldo de la forma correcta, pasando los datos.
+        AgregarSaldo dialogo = new AgregarSaldo((Frame) this.getParent(), true, idApostador, nombreApostador);
+        dialogo.setVisible(true);
+
+        // Si la operación en el diálogo fue exitosa, se actualiza la tabla.
+        if (dialogo.isGuardadoExitoso()) {
+            actualizarTabla();
+            limpiarFormulario();
+        }
     }//GEN-LAST:event_btnModificarActionPerformed
 
     private void txtSaldoKeyReleased(java.awt.event.KeyEvent evt) {//GEN-FIRST:event_txtSaldoKeyReleased
@@ -604,14 +781,6 @@ public class Apostadores extends javax.swing.JDialog {
             atxtObservacion.requestFocus();
         }
     }//GEN-LAST:event_txtSaldoKeyReleased
-
-    private void btnActualizarOcultoActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnActualizarOcultoActionPerformed
-        limpiar();
-        txtNumero.setText(String.valueOf(controller.getMaxCodigo()));
-        txtNombre.requestFocus();
-        btnModificar.setEnabled(false);
-        showApostadores("", stateFilter);
-    }//GEN-LAST:event_btnActualizarOcultoActionPerformed
 
     private void btnImprimirActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnImprimirActionPerformed
         try {
@@ -653,6 +822,16 @@ public class Apostadores extends javax.swing.JDialog {
                 }
                 colsPermitidas.add(col);
             }
+
+            // 2. Se crean los símbolos de formato personalizados
+            DecimalFormatSymbols symbols = new DecimalFormatSymbols();
+
+            // 3. Se establece explícitamente el punto como separador de miles
+            symbols.setGroupingSeparator('.');
+
+            // 4. Se crea el formateador usando ese juego de símbolos
+            DecimalFormat formateador = new DecimalFormat("#,###", symbols);
+
             DefaultTableModel filtrado = new DefaultTableModel();
             for (int colIndex : colsPermitidas) {
                 filtrado.addColumn(original.getColumnName(colIndex));
@@ -660,7 +839,18 @@ public class Apostadores extends javax.swing.JDialog {
             for (int row = 0; row < original.getRowCount(); row++) {
                 Object[] fila = new Object[colsPermitidas.size()];
                 for (int i = 0; i < colsPermitidas.size(); i++) {
-                    fila[i] = original.getValueAt(row, colsPermitidas.get(i));
+
+                    int originalColIndex = colsPermitidas.get(i);
+                    Object valor = original.getValueAt(row, originalColIndex);
+
+                    // Se verifica si la columna es "Saldo" y si el valor es un número
+                    if (original.getColumnName(originalColIndex).equalsIgnoreCase("Saldo") && valor instanceof Number) {
+                        // Se formatea el número a String con separador de miles
+                        fila[i] = formateador.format(valor);
+                    } else {
+                        // Para las demás columnas, se copia el valor tal cual
+                        fila[i] = (valor == null) ? "" : valor;
+                    }
                 }
                 filtrado.addRow(fila);
             }
@@ -792,50 +982,132 @@ public class Apostadores extends javax.swing.JDialog {
     }//GEN-LAST:event_btnImprimirActionPerformed
 
     private void btnExcelActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnExcelActionPerformed
-        DefaultTableModel model = (DefaultTableModel) tblApostadores.getModel();
-        if (model.getRowCount() == 0) {
-            JOptionPane.showMessageDialog(this,
-                    "La tabla está vacía. No se puede exportar un Excel sin datos.",
-                    "Tabla vacía",
-                    JOptionPane.WARNING_MESSAGE);
+//        try {
+//            // 1. Obtener los datos FRESCOS desde el controlador.
+//            List<ApostadorParaVista_DTO> datos = controller.listarApostadores(txtBuscar.getText(), stateFilter);
+//
+//            if (datos.isEmpty()) {
+//                JOptionPane.showMessageDialog(this, "No hay datos para exportar.", "Tabla Vacía", JOptionPane.WARNING_MESSAGE);
+//                return;
+//            }
+//
+//            // 2. Pedir al usuario la ubicación del archivo.
+//            JFileChooser chooser = new JFileChooser();
+//            chooser.setDialogTitle("Guardar como Excel");
+//            chooser.setFileFilter(new FileNameExtensionFilter("Excel Workbook (*.xlsx)", "xlsx"));
+//            chooser.setSelectedFile(new File("Reporte_Apostadores.xlsx"));
+//            if (chooser.showSaveDialog(this) != JFileChooser.APPROVE_OPTION) {
+//                return; // El usuario canceló.
+//            }
+//
+//            // 3. Preparar los datos en el formato genérico que el exportador necesita.
+//            List<String> headers = List.of("Cédula", "Apostador", "Saldo", "Observación", "Estado de Deuda");
+//            List<List<Object>> dataRows = new ArrayList<>();
+//            for (ApostadorParaVista_DTO dto : datos) {
+//                dataRows.add(Arrays.asList(
+//                        dto.getApostador().getCedula(),
+//                        dto.getApostador().getNombre(),
+//                        dto.getApostador().getSaldo(),
+//                        dto.getApostador().getObservacion(),
+//                        dto.getEstadoDeuda() != null ? dto.getEstadoDeuda() : "OK"
+//                ));
+//            }
+//
+//            // 4. Llamar al exportador genérico.
+//            ExcelExporter.export(headers, dataRows, "Apostadores", chooser.getSelectedFile().getAbsolutePath());
+//
+//            JOptionPane.showMessageDialog(this, "Excel exportado exitosamente.", "Éxito", JOptionPane.INFORMATION_MESSAGE);
+//
+//        } catch (ServiceException | IOException e) {
+//            JOptionPane.showMessageDialog(this, "Error al exportar a Excel:\n" + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+//        }
+
+        try {
+            // 1. Obtener los datos FRESCOS desde el controlador.
+            List<ApostadorParaVista_DTO> datos = controller.listarApostadores(txtBuscar.getText(), stateFilter);
+
+            if (datos.isEmpty()) {
+                JOptionPane.showMessageDialog(this, "No hay datos para exportar.", "Tabla Vacía", JOptionPane.WARNING_MESSAGE);
+                return;
+            }
+
+            // 2. Pedir al usuario la ubicación del archivo.
+            JFileChooser chooser = new JFileChooser();
+            chooser.setDialogTitle("Guardar como Excel");
+            chooser.setFileFilter(new FileNameExtensionFilter("Excel Workbook (*.xlsx)", "xlsx"));
+            chooser.setSelectedFile(new File("Reporte_Apostadores.xlsx"));
+            if (chooser.showSaveDialog(this) != JFileChooser.APPROVE_OPTION) {
+                return;
+            }
+
+            // 3. Preparar los datos en el formato genérico.
+            // --- INICIO DE LA CORRECCIÓN ---
+            List<String> headers = List.of("Cédula", "Apostador", "Saldo", "Observación", "Estado");
+            List<List<Object>> dataRows = new ArrayList<>();
+
+            for (ApostadorParaVista_DTO dto : datos) {
+                dataRows.add(Arrays.asList(
+                        dto.getApostador().getCedula(),
+                        dto.getApostador().getNombre(),
+                        dto.getApostador().getSaldo(),
+                        dto.getApostador().getObservacion(),
+                        // Se obtiene el estado (activo/inactivo) en lugar del estado de la deuda.
+                        dto.getApostador().getFk_estados() == 1 ? "Activo" : "Inactivo"
+                ));
+            }
+            // --- FIN DE LA CORRECCIÓN ---
+
+            // 4. Llamar al exportador genérico.
+            ExcelExporter.export(headers, dataRows, "Apostadores", chooser.getSelectedFile().getAbsolutePath());
+
+            JOptionPane.showMessageDialog(this, "Excel exportado exitosamente.", "Éxito", JOptionPane.INFORMATION_MESSAGE);
+
+        } catch (ServiceException | IOException e) {
+            JOptionPane.showMessageDialog(this, "Error al exportar a Excel:\n" + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+        }
+    }//GEN-LAST:event_btnExcelActionPerformed
+
+    private void pmnuHistorialActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_pmnuHistorialActionPerformed
+        int selectedRow = tblApostadores.getSelectedRow();
+        if (selectedRow == -1) {
             return;
         }
 
-        Set<Integer> columnsToSkip = Set.of(1, 5);
+        int modelRow = tblApostadores.convertRowIndexToModel(selectedRow);
+        int idApostador = Integer.parseInt(tblApostadores.getModel().getValueAt(modelRow, 0).toString());
 
-        JFileChooser chooser = new JFileChooser();
-        chooser.setDialogTitle("Guardar Excel");
-        chooser.setApproveButtonText("Guardar");
-        // Filtro opcional para que solo se muestre .xlsx
-        chooser.setFileFilter(new FileNameExtensionFilter("Excel Workbook (*.xlsx)", "xlsx"));
-        chooser.setSelectedFile(new File("Apostadores.xlsx"));
+        // Llamamos a tu método 'openHistorial' que ya tiene la lógica.
+        openHistorial(idApostador);
+    }//GEN-LAST:event_pmnuHistorialActionPerformed
 
-        int opcion = chooser.showSaveDialog(this);
-        if (opcion != JFileChooser.APPROVE_OPTION) {
-            return;  // cancelado
+    private void pmnuPendientesActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_pmnuPendientesActionPerformed
+        int selectedRow = tblApostadores.getSelectedRow();
+        if (selectedRow == -1) {
+            JOptionPane.showMessageDialog(this, "Por favor, seleccione un apostador.", "Aviso", JOptionPane.WARNING_MESSAGE);
+            return;
         }
 
-        File destino = chooser.getSelectedFile();
-        if (!destino.getName().toLowerCase().endsWith(".xlsx")) {
-            destino = new File(destino.getParentFile(), destino.getName() + ".xlsx");
-        }
+        int modelRow = tblApostadores.convertRowIndexToModel(selectedRow);
+        int idApostador = (int) tblApostadores.getModel().getValueAt(modelRow, 0);
+        String nombre = (String) tblApostadores.getModel().getValueAt(modelRow, 2);
+        String cedula = (String) tblApostadores.getModel().getValueAt(modelRow, 1);
 
-        try {
-            Export_Excel.export(tblApostadores,
-                    "Apostadores",
-                    destino.getAbsolutePath(),
-                    columnsToSkip);
-            // Abrir automáticamente
-            if (Desktop.isDesktopSupported()) {
-                Desktop.getDesktop().open(destino);
-            }
-        } catch (Exception ex) {
-            JOptionPane.showMessageDialog(this,
-                    "Error al exportar:\n" + ex.getMessage(),
-                    "Error", JOptionPane.ERROR_MESSAGE);
-            ex.printStackTrace();
+        // 1. Se crea y se muestra el diálogo. El código se detiene aquí hasta que se cierre.
+        Pendientes dialogPendientes = new Pendientes(
+                (Frame) SwingUtilities.getWindowAncestor(this),
+                true,
+                idApostador,
+                nombre,
+                cedula
+        );
+        dialogPendientes.setVisible(true);
+
+        // 2. Cuando el diálogo se cierra, se le pregunta si se hizo algún cambio.
+        if (dialogPendientes.seHizoUnCambio()) {
+            // 3. Si hubo cambios (se pagó una deuda), se actualiza la tabla de apostadores.
+            this.actualizarTabla();
         }
-    }//GEN-LAST:event_btnExcelActionPerformed
+    }//GEN-LAST:event_pmnuPendientesActionPerformed
 
     Frame f = JOptionPane.getFrameForComponent(this);
 
@@ -882,27 +1154,8 @@ public class Apostadores extends javax.swing.JDialog {
         });
     }
 
-    private void validateFields() {
-        if (txtCedula.getText().length() == 0) {
-            txtCedula.setText("0");
-        }
-
-        if (txtNombre.getText().length() == 0) {
-            txtNombre.setText("Sin datos");
-        }
-
-        if (atxtObservacion.getText().length() == 0) {
-            atxtObservacion.setText("Sin datos");
-        }
-
-        if (txtSaldo.getText().length() == 0) {
-            txtSaldo.setText("0");
-        }
-    }
-
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JTextArea atxtObservacion;
-    public static javax.swing.JButton btnActualizarOculto;
     private javax.swing.JButton btnCancel;
     private javax.swing.JButton btnExcel;
     private javax.swing.JButton btnImprimir;
@@ -924,7 +1177,10 @@ public class Apostadores extends javax.swing.JDialog {
     private javax.swing.JScrollPane jScrollPane3;
     private javax.swing.JSeparator jSeparator1;
     private javax.swing.JSeparator jSeparator2;
-    private javax.swing.JTable tblApostadores;
+    private javax.swing.JPopupMenu pmnuApostadores;
+    private javax.swing.JMenuItem pmnuHistorial;
+    private javax.swing.JMenuItem pmnuPendientes;
+    public static javax.swing.JTable tblApostadores;
     private javax.swing.JTextField txtBuscar;
     private javax.swing.JTextField txtCedula;
     private javax.swing.JTextField txtIdapostadores;
@@ -933,72 +1189,4 @@ public class Apostadores extends javax.swing.JDialog {
     public static javax.swing.JTextField txtSaldo;
     // End of variables declaration//GEN-END:variables
 
-    private void save(String cedula, String nombre, String observacion) {
-        finalState = "activo";
-        idestado = State_Controller.getEstadoId(finalState, Run.model);
-
-        controller.createApostadores(cedula, nombre, observacion, idestado);
-
-        JOptionPane.showMessageDialog(null, "Apostador ingresado exitosamente!", "Hecho!", JOptionPane.INFORMATION_MESSAGE);
-        limpiar();
-        txtNumero.setText(String.valueOf(controller.getMaxCodigo()));
-        txtNombre.requestFocus();
-        btnModificar.setEnabled(false);
-        showApostadores("", stateFilter);
-    }
-
-    private void update(int id, String cedula, String nombre, String observacion) {
-        if (initialState.equals("activo") && finalState.equals("inactivo")) {
-            if (txtIdapostadores.getText().length() == 0) {
-                JOptionPane.showMessageDialog(null, "Seleccione un apostador para desactivar.", "Advertencia!", JOptionPane.WARNING_MESSAGE);
-            } else {
-                String[] opciones = {"Sí", "No"};
-                int respuesta = JOptionPane.showOptionDialog(
-                        this,
-                        "El apostador será desactivado",
-                        "Desactivar?",
-                        JOptionPane.YES_NO_OPTION,
-                        JOptionPane.QUESTION_MESSAGE,
-                        null,
-                        opciones,
-                        opciones[0]
-                );
-
-                if (respuesta == JOptionPane.YES_OPTION) {
-                    idestado = State_Controller.getEstadoId(finalState, Run.model);
-                }
-            }
-        } else if (initialState.equals("inactivo") && finalState.equals("activo")) {
-            if (txtIdapostadores.getText().length() == 0) {
-                JOptionPane.showMessageDialog(null, "Seleccione un apostador para activar.", "Advertencia!", JOptionPane.WARNING_MESSAGE);
-            } else {
-                String[] opciones = {"Sí", "No"};
-                int respuesta = JOptionPane.showOptionDialog(
-                        this,
-                        "El apostador será activado",
-                        "Activar?",
-                        JOptionPane.YES_NO_OPTION,
-                        JOptionPane.QUESTION_MESSAGE,
-                        null,
-                        opciones,
-                        opciones[0]
-                );
-
-                if (respuesta == JOptionPane.YES_OPTION) {
-                    idestado = State_Controller.getEstadoId(finalState, Run.model);
-                }
-            }
-        } else {
-            idestado = State_Controller.getEstadoId(initialState, Run.model);
-        }
-
-        controller.updateApostadores(id, cedula, nombre, observacion, idestado);
-
-        JOptionPane.showMessageDialog(null, "Apostador actualizado exitosamente!", "Hecho!", JOptionPane.INFORMATION_MESSAGE);
-        limpiar();
-        txtNumero.setText(String.valueOf(controller.getMaxCodigo()));
-        txtNombre.requestFocus();
-        btnModificar.setEnabled(false);
-        showApostadores("", stateFilter);
-    }
 }

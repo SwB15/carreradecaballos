@@ -1,12 +1,13 @@
 package View;
 
 import Config.AppPaths;
-import Config.Export_Excel;
 import Controller.Movimientos_Controller;
+import Model.MovimientoParaVista_DTO;
+import Services.Exceptions.ServiceException;
+import Utils.ExcelExporter;
 import java.awt.BorderLayout;
 import java.awt.Component;
 import java.awt.Container;
-import java.awt.Desktop;
 import java.awt.Dimension;
 import java.awt.Frame;
 import java.awt.Graphics2D;
@@ -19,16 +20,17 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
+import java.text.DecimalFormat;
 import java.text.SimpleDateFormat;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.imageio.ImageIO;
@@ -42,6 +44,7 @@ import javax.swing.JPanel;
 import javax.swing.JTable;
 import javax.swing.filechooser.FileNameExtensionFilter;
 import javax.swing.table.DefaultTableModel;
+import javax.swing.table.TableRowSorter;
 import net.sf.jasperreports.engine.JRException;
 import net.sf.jasperreports.engine.JasperCompileManager;
 import net.sf.jasperreports.engine.JasperFillManager;
@@ -59,50 +62,97 @@ import net.sf.jasperreports.view.JasperViewer;
  */
 public class Movimientos extends javax.swing.JDialog {
 
-    Movimientos_Controller controller = new Movimientos_Controller();
-
-    String search = "", stateFilter = "", desdeStr = "", hastaStr = "", datefrom = "", dateto = "";
-    LocalDate localDate = LocalDate.now();
-    Date currentDate = Date.from(localDate.atStartOfDay(ZoneId.systemDefault()).toInstant());
+    private final Movimientos_Controller controller;
 
     public Movimientos(java.awt.Frame parent, boolean modal) {
         super(parent, modal);
         initComponents();
         this.setLocationRelativeTo(null);
-        stateFilter = cmbTipomovimientos.getSelectedItem().toString(); //Los demas tipos de movimientos si se usan en la busqueda
-        
-        dchDesde.setDate(currentDate);
-        dchHasta.setDate(currentDate);
-        
-        fechas();  // recalcula datefrom y dateto
-        showMovimientos(search, stateFilter, datefrom, dateto);
+        this.controller = new Movimientos_Controller();
+        initializeView();
 
-        // -------- Aquí se añaden los listeners --------
-        // Cuando cambie la fecha "Desde"
-        dchDesde.addPropertyChangeListener("date", evt -> {
-            fechas();  // recalcula datefrom y dateto
-            stateFilter = cmbTipomovimientos.getSelectedItem().toString();
-            showMovimientos(search, stateFilter, datefrom, dateto);
-        });
-
-        // Cuando cambie la fecha "Hasta"
-        dchHasta.addPropertyChangeListener("date", evt -> {
-            fechas();
-            stateFilter = cmbTipomovimientos.getSelectedItem().toString();
-            showMovimientos(search, stateFilter, datefrom, dateto);
-        });
     }
 
-    private void showMovimientos(String search, String stateFilter, String datefrom, String dateto) {
-        try {
-            DefaultTableModel model;
-            model = controller.showMovimientos(search, stateFilter, datefrom, dateto);
-            tblMovimientos.setModel(model);
-            ocultar_columnas(tblMovimientos);
-        } catch (Exception e) {
+    private void initializeView() {
+        // Configuración inicial de fechas al mes actual
+        LocalDate hoy = LocalDate.now();
+        dchDesde.setDate(Date.from(hoy.withDayOfMonth(1).atStartOfDay(ZoneId.systemDefault()).toInstant()));
+        dchHasta.setDate(Date.from(hoy.withDayOfMonth(hoy.lengthOfMonth()).atStartOfDay(ZoneId.systemDefault()).toInstant()));
 
-            JOptionPane.showMessageDialog(null, e);
+        // Listeners para los filtros. Todos llaman al mismo método central.
+        dchDesde.addPropertyChangeListener("date", evt -> actualizarTabla());
+        dchHasta.addPropertyChangeListener("date", evt -> actualizarTabla());
+        txtBuscar.addKeyListener(new java.awt.event.KeyAdapter() {
+            public void keyReleased(java.awt.event.KeyEvent evt) {
+                actualizarTabla();
+            }
+        });
+        cmbTipomovimientos.addActionListener(e -> actualizarTabla());
+
+        // Carga inicial de datos
+        actualizarTabla();
+    }
+
+    /**
+     * Método central para cargar y refrescar los datos de la tabla.
+     */
+    private void actualizarTabla() {
+        System.out.println("\n--- VISTA (Movimientos): Iniciando actualización de tabla ---");
+
+        // 1. Recoger filtros de la UI
+        String apostadorSearch = txtBuscar.getText();
+        String tipoMovimientoSearch = cmbTipomovimientos.getSelectedItem().toString();
+        LocalDate dateFrom = (dchDesde.getDate() != null) ? dchDesde.getDate().toInstant().atZone(ZoneId.systemDefault()).toLocalDate() : null;
+        LocalDate dateTo = (dchHasta.getDate() != null) ? dchHasta.getDate().toInstant().atZone(ZoneId.systemDefault()).toLocalDate() : null;
+
+        System.out.println("1. Filtros aplicados:");
+        System.out.println("   - Búsqueda Apostador: '" + apostadorSearch + "'");
+        System.out.println("   - Tipo Movimiento: '" + tipoMovimientoSearch + "'");
+        System.out.println("   - Fecha Desde: " + dateFrom);
+        System.out.println("   - Fecha Hasta: " + dateTo);
+
+        try {
+            // 2. Obtener la lista de DTOs del controlador
+            System.out.println("2. Llamando al controlador: controller.listarMovimientos...");
+            List<MovimientoParaVista_DTO> listaMovimientos = controller.listarMovimientos(apostadorSearch, tipoMovimientoSearch, dateFrom, dateTo);
+            System.out.println("3. Datos recibidos del controlador. Número de movimientos: " + listaMovimientos.size());
+
+            // 3. Construir el TableModel
+            String[] titles = {"Id", "Fecha", "Tipo Movimiento", "Monto", "Apostador", "Observacion", "Id Apuesta", "Carrera"};
+            DefaultTableModel model = new DefaultTableModel(null, titles) {
+                @Override
+                public boolean isCellEditable(int row, int column) {
+                    return false;
+                }
+            };
+
+            System.out.println("4. Llenando el TableModel...");
+            for (MovimientoParaVista_DTO dto : listaMovimientos) {
+                model.addRow(new Object[]{
+                    dto.getMovimiento().getIdMovimiento(),
+                    dto.getMovimiento().getFecha(),
+                    dto.getDescripcionTipoMovimiento(),
+                    dto.getMovimiento().getMonto(),
+                    dto.getNombreApostador(),
+                    dto.getMovimiento().getDescripcion(),
+                    dto.getMovimiento().getFk_apuestas(),
+                    dto.getNombreCarrera()
+                });
+            }
+
+            // 4. Asignar modelo y renderizador a la tabla
+            tblMovimientos.setModel(model);
+            tblMovimientos.setDefaultRenderer(Object.class, new Movimientos_TableCellRenderer());
+            tblMovimientos.setRowSorter(new TableRowSorter<>(model));
+            ocultar_columnas(tblMovimientos);
+
+            System.out.println("5. Tabla actualizada en la UI.");
+
+        } catch (ServiceException e) {
+            System.err.println("!!! ERROR en la vista al cargar movimientos: " + e.getMessage());
+            JOptionPane.showMessageDialog(this, "Error al cargar los movimientos:\n" + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
         }
+        System.out.println("--- VISTA (Movimientos): Fin de la actualización ---");
     }
 
     private void ocultar_columnas(JTable table) {
@@ -110,45 +160,9 @@ public class Movimientos extends javax.swing.JDialog {
         table.getColumnModel().getColumn(0).setMinWidth(0);
         table.getColumnModel().getColumn(0).setPreferredWidth(0);
 
-        table.getColumnModel().getColumn(2).setMaxWidth(0);
-        table.getColumnModel().getColumn(2).setMinWidth(0);
-        table.getColumnModel().getColumn(2).setPreferredWidth(0);
-        
-        table.getColumnModel().getColumn(5).setMaxWidth(0);
-        table.getColumnModel().getColumn(5).setMinWidth(0);
-        table.getColumnModel().getColumn(5).setPreferredWidth(0);
-
-        table.getColumnModel().getColumn(8).setMaxWidth(0);
-        table.getColumnModel().getColumn(8).setMinWidth(0);
-        table.getColumnModel().getColumn(8).setPreferredWidth(0);
-    }
-
-    private void fechas() {
-        Date desdeDate = dchDesde.getDate();
-        Date hastaDate = dchHasta.getDate();
-
-        // Si alguno es null, no formateamos nada y dejamos los filtros apagados
-        if (desdeDate == null || hastaDate == null) {
-            desdeStr = "";
-            hastaStr = "";
-            datefrom = null;
-            dateto = null;
-            return;
-        }
-
-        // A partir de aquí sabemos que ambos son no-null
-        SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy");
-        desdeStr = sdf.format(desdeDate);
-        hastaStr = sdf.format(hastaDate);
-
-        // Convierte a LocalDate
-        ZoneId zid = ZoneId.systemDefault();
-        LocalDate desde = desdeDate.toInstant().atZone(zid).toLocalDate();
-        LocalDate hasta = hastaDate.toInstant().atZone(zid).toLocalDate();
-
-        // Formato yyyy-MM-dd
-        datefrom = desde.format(DateTimeFormatter.ISO_LOCAL_DATE);
-        dateto = hasta.format(DateTimeFormatter.ISO_LOCAL_DATE);
+        table.getColumnModel().getColumn(6).setMaxWidth(0);
+        table.getColumnModel().getColumn(6).setMinWidth(0);
+        table.getColumnModel().getColumn(6).setPreferredWidth(0);
     }
 
     @SuppressWarnings("unchecked")
@@ -341,12 +355,13 @@ public class Movimientos extends javax.swing.JDialog {
     }// </editor-fold>//GEN-END:initComponents
 
     private void txtBuscarKeyReleased(java.awt.event.KeyEvent evt) {//GEN-FIRST:event_txtBuscarKeyReleased
-        showMovimientos(txtBuscar.getText(), stateFilter, datefrom, dateto);
+        // Simplemente se notifica que un filtro cambió.
+        actualizarTabla();
     }//GEN-LAST:event_txtBuscarKeyReleased
 
     private void cmbTipomovimientosActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_cmbTipomovimientosActionPerformed
-        stateFilter = cmbTipomovimientos.getSelectedItem().toString(); //Los demas tipos de movimientos si se usan en la busqueda
-        showMovimientos(txtBuscar.getText(), stateFilter, datefrom, dateto);
+        // Simplemente se notifica que un filtro cambió.
+        actualizarTabla();
     }//GEN-LAST:event_cmbTipomovimientosActionPerformed
 
     private void btnImprimirActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnImprimirActionPerformed
@@ -378,7 +393,7 @@ public class Movimientos extends javax.swing.JDialog {
             }
 
             DefaultTableModel original = (DefaultTableModel) tblMovimientos.getModel();
-            int[] colsNoPermitidas = {0, 2, 7};
+            int[] colsNoPermitidas = {0, 6, 7};
             List<Integer> colsPermitidas = new ArrayList<>();
             outer:
             for (int col = 0; col < original.getColumnCount(); col++) {
@@ -393,10 +408,29 @@ public class Movimientos extends javax.swing.JDialog {
             for (int colIndex : colsPermitidas) {
                 filtrado.addColumn(original.getColumnName(colIndex));
             }
+            // Se crea un formateador para los números
+            DecimalFormat formateadorNumero = new DecimalFormat("#,###");
+            // Se crea un formateador para las fechas
+            DateTimeFormatter formateadorFecha = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+
             for (int row = 0; row < original.getRowCount(); row++) {
                 Object[] fila = new Object[colsPermitidas.size()];
                 for (int i = 0; i < colsPermitidas.size(); i++) {
-                    fila[i] = original.getValueAt(row, colsPermitidas.get(i));
+                    int originalColIndex = colsPermitidas.get(i);
+                    Object valor = original.getValueAt(row, originalColIndex);
+
+                    // --- INICIO DE LA CORRECCIÓN ---
+                    if (valor instanceof LocalDate) {
+                        // Si el valor es una fecha, se formatea a "dd/MM/yyyy".
+                        fila[i] = ((LocalDate) valor).format(formateadorFecha);
+                    } else if (valor instanceof Number) {
+                        // Si es un número, se formatea con separador de miles.
+                        fila[i] = formateadorNumero.format(valor);
+                    } else {
+                        // Para todo lo demás, se convierte a String (manejando nulos).
+                        fila[i] = (valor == null) ? "" : valor.toString();
+                    }
+                    // --- FIN DE LA CORRECCIÓN ---
                 }
                 filtrado.addRow(fila);
             }
@@ -409,14 +443,25 @@ public class Movimientos extends javax.swing.JDialog {
                 apostador = "Apostador: " + txtBuscar.getText();
             }
 
-            String parametroDesde = "";
-            String parametroHasta = "";
+            // Se crea un formateador con el patrón deseado.
+            SimpleDateFormat formatter = new SimpleDateFormat("dd/MM/yyyy");
 
-            if (desdeStr.equals("")) {
-                parametroDesde = "Todos";
+            String parametroDesde;
+            String parametroHasta;
+
+            // --- Procesar Fecha Desde ---
+            Date fechaDesde = dchDesde.getDate();
+            if (fechaDesde != null) {
+                parametroDesde = formatter.format(fechaDesde);
+            } else {
+                parametroDesde = "Todos"; // Valor por defecto si no hay fecha
             }
 
-            if (hastaStr.equals("")) {
+            // --- Procesar Fecha Hasta ---
+            Date fechaHasta = dchHasta.getDate();
+            if (fechaHasta != null) {
+                parametroHasta = formatter.format(fechaHasta);
+            } else {
                 parametroHasta = "Todos";
             }
 
@@ -546,53 +591,106 @@ public class Movimientos extends javax.swing.JDialog {
     }//GEN-LAST:event_btnImprimirActionPerformed
 
     private void btnExcelActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnExcelActionPerformed
-        DefaultTableModel model = (DefaultTableModel) tblMovimientos.getModel();
-        if (model.getRowCount() == 0) {
-            JOptionPane.showMessageDialog(this,
-                    "La tabla está vacía. No se puede exportar un Excel sin datos.",
-                    "Tabla vacía",
-                    JOptionPane.WARNING_MESSAGE);
-            return;
-        }
-        
-        List<Object[]> resumen = List.of(
-                new Object[]{"Tipo de movimiento: ", cmbTipomovimientos.getSelectedItem()},
-                new Object[]{" ", ""}
-        );
-
-        Set<Integer> columnsToSkip = Set.of(0, 2, 7);
-
-        JFileChooser chooser = new JFileChooser();
-        chooser.setDialogTitle("Guardar Excel");
-        chooser.setApproveButtonText("Guardar");
-        // Filtro opcional para que solo muestre .xlsx
-        chooser.setFileFilter(new FileNameExtensionFilter("Excel Workbook (*.xlsx)", "xlsx"));
-        chooser.setSelectedFile(new File("Movimientos.xlsx"));
-
-        int opcion = chooser.showSaveDialog(this);
-        if (opcion != JFileChooser.APPROVE_OPTION) {
-            return;  // cancelado
-        }
-
-        File destino = chooser.getSelectedFile();
-        if (!destino.getName().toLowerCase().endsWith(".xlsx")) {
-            destino = new File(destino.getParentFile(), destino.getName() + ".xlsx");
-        }
+//        DefaultTableModel model = (DefaultTableModel) tblMovimientos.getModel();
+//        if (model.getRowCount() == 0) {
+//            JOptionPane.showMessageDialog(this,
+//                    "La tabla está vacía. No se puede exportar un Excel sin datos.",
+//                    "Tabla vacía",
+//                    JOptionPane.WARNING_MESSAGE);
+//            return;
+//        }
+//
+//        List<Object[]> resumen = List.of(
+//                new Object[]{"Tipo de movimiento: ", cmbTipomovimientos.getSelectedItem()},
+//                new Object[]{" ", ""}
+//        );
+//
+//        Set<Integer> columnsToSkip = Set.of(0, 6, 7);
+//
+//        JFileChooser chooser = new JFileChooser();
+//        chooser.setDialogTitle("Guardar Excel");
+//        chooser.setApproveButtonText("Guardar");
+//        // Filtro opcional para que solo muestre .xlsx
+//        chooser.setFileFilter(new FileNameExtensionFilter("Excel Workbook (*.xlsx)", "xlsx"));
+//        chooser.setSelectedFile(new File("Movimientos.xlsx"));
+//
+//        int opcion = chooser.showSaveDialog(this);
+//        if (opcion != JFileChooser.APPROVE_OPTION) {
+//            return;  // cancelado
+//        }
+//
+//        File destino = chooser.getSelectedFile();
+//        if (!destino.getName().toLowerCase().endsWith(".xlsx")) {
+//            destino = new File(destino.getParentFile(), destino.getName() + ".xlsx");
+//        }
+//
+//        try {
+//            Export_Excel.export(tblMovimientos,
+//                    "Movimientos",
+//                    destino.getAbsolutePath(),
+//                    columnsToSkip, resumen);
+//            // Abrir automáticamente
+//            if (Desktop.isDesktopSupported()) {
+//                Desktop.getDesktop().open(destino);
+//            }
+//        } catch (Exception ex) {
+//            JOptionPane.showMessageDialog(this,
+//                    "Error al exportar:\n" + ex.getMessage(),
+//                    "Error", JOptionPane.ERROR_MESSAGE);
+//            ex.printStackTrace();
+//        }
 
         try {
-            Export_Excel.export(tblMovimientos,
-                    "Movimientos",
-                    destino.getAbsolutePath(),
-                    columnsToSkip, resumen);
-            // Abrir automáticamente
-            if (Desktop.isDesktopSupported()) {
-                Desktop.getDesktop().open(destino);
+            // 1. Obtener los datos FRESCOS del controlador
+            String apostadorSearch = txtBuscar.getText();
+            String tipoMovimientoSearch = cmbTipomovimientos.getSelectedItem().toString();
+            LocalDate dateFrom = (dchDesde.getDate() != null) ? dchDesde.getDate().toInstant().atZone(ZoneId.systemDefault()).toLocalDate() : null;
+            LocalDate dateTo = (dchHasta.getDate() != null) ? dchHasta.getDate().toInstant().atZone(ZoneId.systemDefault()).toLocalDate() : null;
+            List<MovimientoParaVista_DTO> datos = controller.listarMovimientos(apostadorSearch, tipoMovimientoSearch, dateFrom, dateTo);
+
+            if (datos.isEmpty()) {
+                JOptionPane.showMessageDialog(this, "No hay datos para exportar.", "Tabla Vacía", JOptionPane.WARNING_MESSAGE);
+                return;
             }
-        } catch (Exception ex) {
-            JOptionPane.showMessageDialog(this,
-                    "Error al exportar:\n" + ex.getMessage(),
-                    "Error", JOptionPane.ERROR_MESSAGE);
-            ex.printStackTrace();
+
+            // 2. Pedir al usuario la ubicación del archivo
+            JFileChooser chooser = new JFileChooser();
+            chooser.setDialogTitle("Guardar como Excel");
+            chooser.setFileFilter(new FileNameExtensionFilter("Excel Workbook (*.xlsx)", "xlsx"));
+            chooser.setSelectedFile(new File("Reporte_Movimientos.xlsx"));
+            if (chooser.showSaveDialog(this) != JFileChooser.APPROVE_OPTION) {
+                return;
+            }
+
+            // 3. Preparar los datos y formatear la fecha
+            List<String> headers = List.of("Fecha", "Tipo Movimiento", "Monto", "Apostador", "Observación", "Carrera");
+            List<List<Object>> dataRows = new ArrayList<>();
+            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+
+            for (MovimientoParaVista_DTO dto : datos) {
+                dataRows.add(Arrays.asList(
+                        dto.getMovimiento().getFecha() != null ? dto.getMovimiento().getFecha().format(formatter) : "", // <-- Fecha formateada
+                        dto.getDescripcionTipoMovimiento(),
+                        dto.getMovimiento().getMonto(),
+                        dto.getNombreApostador(),
+                        dto.getMovimiento().getDescripcion(),
+                        dto.getNombreCarrera()
+                ));
+            }
+
+            // 4. Preparar el resumen
+            List<Object[]> resumen = List.of(
+                    new Object[]{"Filtro Tipo de movimiento:", cmbTipomovimientos.getSelectedItem()},
+                    new Object[]{"", ""} // Fila vacía como separador
+            );
+
+            // 5. Llamar al exportador genérico
+            ExcelExporter.export(headers, dataRows, "Movimientos", chooser.getSelectedFile().getAbsolutePath(), resumen);
+
+            JOptionPane.showMessageDialog(this, "Excel exportado exitosamente.", "Éxito", JOptionPane.INFORMATION_MESSAGE);
+
+        } catch (ServiceException | IOException e) {
+            JOptionPane.showMessageDialog(this, "Error al exportar a Excel:\n" + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
         }
     }//GEN-LAST:event_btnExcelActionPerformed
 

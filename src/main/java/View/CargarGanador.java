@@ -13,58 +13,65 @@ import javax.swing.JOptionPane;
  */
 public class CargarGanador extends javax.swing.JDialog {
 
-    Carreras_Controller carreras_controller = new Carreras_Controller();
+    private final HashMap<Integer, String> caballosMap;
 
-    public CargarGanador(java.awt.Frame parent, boolean modal, int idcarreras, String carrera, HashMap<String, String> caballosMap) {
+    // Campos para guardar el resultado de la selección.
+    private Integer idCaballoSeleccionado = null;
+    private String nombreCaballoSeleccionado = null;
+
+    public CargarGanador(java.awt.Frame parent, boolean modal, int idCarrera, String nombreCarrera, HashMap<Integer, String> caballosMap) {
         super(parent, modal);
         initComponents();
         this.setLocationRelativeTo(null);
-        txtCarreras.setText(carrera);
+
+        this.caballosMap = caballosMap;
+
+        // Configuración inicial de la UI
+        txtCarreras.setText(nombreCarrera);
+        txtIdcarreras.setText(String.valueOf(idCarrera));
+
+        cargarCaballosComboBox();
         txtCarreras.setEditable(false);
         txtCarreras.setBackground(Color.white);
-        txtIdcarreras.setText(String.valueOf(idcarreras));
         txtIdcarreras.setVisible(false);
         txtIdcaballos.setVisible(false);
         txtCarreras.transferFocus();
         cmbCaballos.requestFocus();
-        cargarCaballosComboBox(caballosMap);
     }
 
-    public void cargarCaballosComboBox(HashMap<String, String> caballosMap) {
+    public Integer getIdCaballoSeleccionado() {
+        return idCaballoSeleccionado;
+    }
+
+    public String getNombreCaballoSeleccionado() {
+        return nombreCaballoSeleccionado;
+    }
+
+    /**
+     * Carga los caballos en el ComboBox y maneja la selección.
+     */
+    private void cargarCaballosComboBox() {
         cmbCaballos.removeAllItems();
 
-        // Agregamos los nombres de los caballos al ComboBox
-        for (String nombre : caballosMap.values()) {
-            cmbCaballos.addItem(nombre);
+        // Se invierte el mapa para facilitar la búsqueda por nombre.
+        Map<String, Integer> nombreAIdMap = new HashMap<>();
+        for (Map.Entry<Integer, String> entry : this.caballosMap.entrySet()) {
+            nombreAIdMap.put(entry.getValue(), entry.getKey());
+            cmbCaballos.addItem(entry.getValue());
         }
 
-        // Si el ComboBox tiene elementos, seleccionamos el primero automáticamente y actualizamos el ID
-        if (cmbCaballos.getItemCount() > 0) {
-            String firstNombre = (String) cmbCaballos.getItemAt(0); // Primer caballo en el ComboBox
-            for (Map.Entry<String, String> entry : caballosMap.entrySet()) {
-                if (entry.getValue().equals(firstNombre)) {
-                    // Actualizamos el TextField con el ID del primer caballo
-                    txtIdcaballos.setText(entry.getKey());
-                    break;
-                }
-            }
-        }
-
-        // Listener para cmbCaballos (para actualizar el ID al seleccionar un nuevo caballo)
-        cmbCaballos.addActionListener((ActionEvent e) -> {
-            String selectedNombre = (String) cmbCaballos.getSelectedItem();
-            if (selectedNombre != null) {
-                // Buscamos el ID del caballo seleccionado en el HashMap
-                for (Map.Entry<String, String> entry : caballosMap.entrySet()) {
-                    if (entry.getValue().equals(selectedNombre)) {
-                        // Actualizamos el TextField con el ID del caballo
-                        txtIdcaballos.setText(entry.getKey());
-                        System.out.println("ID Caballo: " + entry.getKey());
-                        break;
-                    }
-                }
+        // Se actualiza el ID seleccionado cuando cambia la selección del ComboBox.
+        cmbCaballos.addActionListener(e -> {
+            String nombreSeleccionado = (String) cmbCaballos.getSelectedItem();
+            if (nombreSeleccionado != null) {
+                txtIdcaballos.setText(String.valueOf(nombreAIdMap.get(nombreSeleccionado)));
             }
         });
+
+        // Se selecciona el primer item por defecto.
+        if (cmbCaballos.getItemCount() > 0) {
+            cmbCaballos.setSelectedIndex(0);
+        }
     }
 
     @SuppressWarnings("unchecked")
@@ -162,13 +169,16 @@ public class CargarGanador extends javax.swing.JDialog {
     }// </editor-fold>//GEN-END:initComponents
 
     private void btnSaveActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnSaveActionPerformed
-        if (txtCarreras.getText().length() == 0) {
-            JOptionPane.showMessageDialog(null, "Necesitas seleccionar o cargar una carrera primeramente", "Advertencia!", JOptionPane.WARNING_MESSAGE);
-        } else {
-            NewApuestas.txtIdganador.setText(txtIdcaballos.getText());
-            NewApuestas.txtGanador.setText(cmbCaballos.getSelectedItem().toString());
-            this.dispose();
+        if (cmbCaballos.getSelectedIndex() == -1) {
+            JOptionPane.showMessageDialog(this, "Debe seleccionar un caballo.", "Validación", JOptionPane.WARNING_MESSAGE);
+            return;
         }
+
+        // Se guarda el resultado en las variables de la clase.
+        this.idCaballoSeleccionado = Integer.parseInt(txtIdcaballos.getText());
+        this.nombreCaballoSeleccionado = (String) cmbCaballos.getSelectedItem();
+
+        this.dispose(); // Se cierra la ventana.
     }//GEN-LAST:event_btnSaveActionPerformed
 
     private void btnCancelActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnCancelActionPerformed

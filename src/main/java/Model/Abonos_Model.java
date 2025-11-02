@@ -1,23 +1,25 @@
-
 package Model;
 
+import java.time.LocalDate;
+
 /**
- *
- * @author SwichBlade15
+ * Representa un abono o pago realizado para una apuesta específica.
  */
 public class Abonos_Model {
-    private int idabonos;
-    private String fecha;
+
+    private int idAbono;
+    private LocalDate fecha; // Se usa LocalDate para un manejo de fechas robusto.
     private Integer monto;
     private String origen;
-    private Integer fk_apuestas;
-    private Integer fk_apostadores;
+    private Integer fk_apuestas;  // Se mantiene la nomenclatura para claves foráneas.
+    private Integer fk_apostadores; // Se mantiene la nomenclatura para claves foráneas.
 
+    // Asumo que tienes los getters y setters para todos estos campos.
     public Abonos_Model() {
     }
 
-    public Abonos_Model(int idabonos, String fecha, Integer monto, String origen, Integer fk_apuestas, Integer fk_apostadores) {
-        this.idabonos = idabonos;
+    public Abonos_Model(int idAbono, LocalDate fecha, Integer monto, String origen, Integer fk_apuestas, Integer fk_apostadores) {
+        this.idAbono = idAbono;
         this.fecha = fecha;
         this.monto = monto;
         this.origen = origen;
@@ -25,19 +27,19 @@ public class Abonos_Model {
         this.fk_apostadores = fk_apostadores;
     }
 
-    public int getIdabonos() {
-        return idabonos;
+    public int getIdAbono() {
+        return idAbono;
     }
 
-    public void setIdabonos(int idabonos) {
-        this.idabonos = idabonos;
+    public void setIdAbono(int idAbono) {
+        this.idAbono = idAbono;
     }
 
-    public String getFecha() {
+    public LocalDate getFecha() {
         return fecha;
     }
 
-    public void setFecha(String fecha) {
+    public void setFecha(LocalDate fecha) {
         this.fecha = fecha;
     }
 

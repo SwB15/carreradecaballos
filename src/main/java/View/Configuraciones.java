@@ -1,12 +1,10 @@
 package View;
 
-import Services.SQLiteBackupManager;
-import java.io.File;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.StandardCopyOption;
-import java.text.SimpleDateFormat;
-import java.util.Date;
+import Controller.Backup_Controller;
+import Model.Backup_DTO;
+import Services.Exceptions.ServiceException;
+import java.time.format.DateTimeFormatter;
+import java.util.List;
 import javax.swing.JOptionPane;
 import javax.swing.table.DefaultTableModel;
 
@@ -16,62 +14,40 @@ import javax.swing.table.DefaultTableModel;
  */
 public class Configuraciones extends javax.swing.JDialog {
 
+    private final Backup_Controller controller;
+
     public Configuraciones(java.awt.Frame parent, boolean modal) {
         super(parent, modal);
         initComponents();
         this.setLocationRelativeTo(null);
-        cargarBackupsEnTabla();
+        this.controller = new Backup_Controller();
+        actualizarTablaBackups();
     }
 
-    public void cargarBackupsEnTabla() {
-        System.out.println("BACKUP_DIR en tiempo de ejecución: " + SQLiteBackupManager.BACKUP_DIR);
+    private void actualizarTablaBackups() {
+        // 1. Pedir la lista de backups al controlador.
+        List<Backup_DTO> backups = controller.listarBackups();
 
-        File backupDir = new File(SQLiteBackupManager.BACKUP_DIR);
-
-        // 1) Imprime info de la carpeta
-        System.out.println("backupDir.getAbsolutePath() = " + backupDir.getAbsolutePath());
-        System.out.println("backupDir.exists() = " + backupDir.exists());
-        System.out.println("backupDir.isDirectory() = " + backupDir.isDirectory());
-
-        // 2) Imprime todos los archivos (sin filtrar)
-        File[] allFiles = backupDir.listFiles();
-        if (allFiles == null) {
-            System.out.println("allFiles es null -> La carpeta no existe o no se pudo leer.");
-        } else {
-            System.out.println("Cantidad de archivos sin filtrar: " + allFiles.length);
-            for (File f : allFiles) {
-                System.out.println(" - Archivo encontrado (sin filtrar): " + f.getName());
+        // 2. Construir el TableModel.
+        String[] titles = {"Nombre", "Fecha de Creación", "Tamaño"};
+        DefaultTableModel model = new DefaultTableModel(null, titles) {
+            @Override
+            public boolean isCellEditable(int row, int column) {
+                return false;
             }
+        };
+
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss");
+        for (Backup_DTO dto : backups) {
+            model.addRow(new Object[]{
+                dto.getNombre(),
+                dto.getFecha().format(formatter),
+                String.format("%.2f MB", dto.getTamanoMb())
+            });
         }
 
-        // 3) Aplica el filtro backup_*.db
-        File[] backups = backupDir.listFiles((dir, name) -> name.startsWith("backup_") && name.endsWith(".db"));
-        if (backups == null) {
-            System.out.println("backups es null -> Error al leer con el filtro o la carpeta no existe.");
-        } else {
-            System.out.println("Cantidad de backups filtrados: " + backups.length);
-            for (File backup : backups) {
-                System.out.println(" - Archivo filtrado: " + backup.getName());
-            }
-        }
-
-        // 4) Finalmente, si backups no es null, carga en la tabla
-        if (backups != null && backups.length > 0) {
-            DefaultTableModel model = (DefaultTableModel) tblBackups.getModel();
-            model.setRowCount(0); // Limpiar tabla
-            SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
-
-            for (File backup : backups) {
-                model.addRow(new Object[]{
-                    backup.getName(),
-                    sdf.format(new Date(backup.lastModified())),
-                    String.format("%.2f MB", backup.length() / (1024.0 * 1024.0))
-                });
-            }
-        }
-
-        tblBackups.revalidate();
-        tblBackups.repaint();
+        // 3. Asignar el modelo a la tabla.
+        tblBackups.setModel(model);
     }
 
     @SuppressWarnings("unchecked")
@@ -194,64 +170,44 @@ public class Configuraciones extends javax.swing.JDialog {
     private void BtnCargarActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_BtnCargarActionPerformed
         String backupSeleccionado = txtRestaurar.getText().trim();
         if (backupSeleccionado.isEmpty()) {
-            JOptionPane.showMessageDialog(this, "Selecciona un backup de la tabla primero.");
+            JOptionPane.showMessageDialog(this, "Selecciona un backup de la tabla primero.", "Aviso", JOptionPane.WARNING_MESSAGE);
             return;
         }
 
-        String[] opciones = {"Sí", "No"};
-        int confirm = JOptionPane.showOptionDialog(this,
-                "¿Estás seguro que quieres restaurar el backup?\nSe sobrescribirá la base de datos actual.",
-                "Confirmar restauración",
-                JOptionPane.YES_NO_OPTION,
-                JOptionPane.WARNING_MESSAGE,
-                null,
-                opciones,
-                opciones[1]); // Por defecto "No"
+        int confirm = JOptionPane.showConfirmDialog(this,
+                "¿Estás seguro que quieres restaurar este backup?\nLa base de datos actual será sobrescrita.",
+                "Confirmar Restauración", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
 
         if (confirm == JOptionPane.YES_OPTION) {
             try {
-                File backupFile = new File(SQLiteBackupManager.BACKUP_DIR + File.separator + backupSeleccionado);
-                File dbFile = new File(SQLiteBackupManager.DB_PATH);
-
-                // Sobrescribe la base de datos actual
-                Files.copy(backupFile.toPath(), dbFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
-
-                JOptionPane.showMessageDialog(this, "Backup restaurado con éxito.");
-            } catch (IOException ex) {
-                ex.printStackTrace();
-                JOptionPane.showMessageDialog(this, "Error al restaurar el backup.");
+                controller.restaurarBackup(backupSeleccionado);
+                JOptionPane.showMessageDialog(this, "Backup restaurado con éxito.\nSe recomienda reiniciar la aplicación.", "Éxito", JOptionPane.INFORMATION_MESSAGE);
+            } catch (ServiceException e) {
+                JOptionPane.showMessageDialog(this, "Error: " + e.getMessage(), "Error de Restauración", JOptionPane.ERROR_MESSAGE);
             }
         }
-
     }//GEN-LAST:event_BtnCargarActionPerformed
 
     private void btnDeleteActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnDeleteActionPerformed
         String backupSeleccionado = txtRestaurar.getText().trim();
         if (backupSeleccionado.isEmpty()) {
-            JOptionPane.showMessageDialog(this, "Selecciona un backup de la tabla primero.");
+            JOptionPane.showMessageDialog(this, "Selecciona un backup de la tabla primero.", "Aviso", JOptionPane.WARNING_MESSAGE);
             return;
         }
 
-        String[] opciones = {"Sí", "No"};
-        int confirm = JOptionPane.showOptionDialog(this,
+        int confirm = JOptionPane.showConfirmDialog(this,
                 "¿Estás seguro que quieres eliminar el backup seleccionado?",
-                "Confirmar eliminación",
-                JOptionPane.YES_NO_OPTION,
-                JOptionPane.WARNING_MESSAGE,
-                null,
-                opciones,
-                opciones[1]);  // Por defecto "No"
+                "Confirmar Eliminación", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
 
         if (confirm == JOptionPane.YES_OPTION) {
-            File backupFile = new File(SQLiteBackupManager.BACKUP_DIR + File.separator + backupSeleccionado);
-            if (backupFile.exists() && backupFile.delete()) {
-                JOptionPane.showMessageDialog(this, "Backup eliminado con éxito.");
-                cargarBackupsEnTabla();  // Vuelve a cargar la tabla actualizada
-            } else {
-                JOptionPane.showMessageDialog(this, "No se pudo eliminar el backup.");
+            try {
+                controller.eliminarBackup(backupSeleccionado);
+                JOptionPane.showMessageDialog(this, "Backup eliminado con éxito.", "Éxito", JOptionPane.INFORMATION_MESSAGE);
+                actualizarTablaBackups(); // Se refresca la tabla
+            } catch (ServiceException e) {
+                JOptionPane.showMessageDialog(this, "Error: " + e.getMessage(), "Error de Eliminación", JOptionPane.ERROR_MESSAGE);
             }
         }
-
     }//GEN-LAST:event_btnDeleteActionPerformed
 
     /**

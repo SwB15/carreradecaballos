@@ -1,47 +1,70 @@
 package Model;
 
+import java.time.LocalDate;
+
 /**
- *
- * @author SwichBlade15
+ * Representa un movimiento o transacción financiera en el sistema. Sirve como
+ * un registro de auditoría para todos los cambios de saldo.
  */
 public class Movimientos_Model {
 
-    private int idmovimientos;
-    private String fecha;
+    private int idMovimiento;
+    private LocalDate fecha;
     private int monto;
-    private String observacion;
+    private String descripcion; // "descripcion" es más estándar para un log de transacciones.
+
+    // Se mantiene la nomenclatura para claves foráneas.
     private Integer fk_apostadores;
     private Integer fk_apuestas;
     private Integer fk_tipomovimientos;
     private Integer fk_carreras;
 
+    /**
+     * Constructor por defecto.
+     */
     public Movimientos_Model() {
     }
 
-    public Movimientos_Model(int idmovimientos, String fecha, int monto, String observacion, Integer fk_apostadores, Integer fk_apuestas, Integer fk_tipomovimientos, Integer fk_carreras) {
-        this.idmovimientos = idmovimientos;
+    /**
+     * Constructor para inicializar un objeto Movimientos_Model con todos sus
+     * datos.
+     *
+     * @param idMovimiento El ID único del movimiento.
+     * @param fecha La fecha y hora en que ocurrió el movimiento.
+     * @param monto El importe del movimiento (positivo para ingresos, negativo
+     * para egresos).
+     * @param descripcion Una breve descripción de la transacción.
+     * @param fk_apostadores El ID del apostador asociado.
+     * @param fk_apuestas El ID de la apuesta asociada (si aplica).
+     * @param fk_tipomovimientos El ID del tipo de movimiento.
+     * @param fk_carreras El ID de la carrera asociada (si aplica).
+     */
+    public Movimientos_Model(int idMovimiento, LocalDate fecha, int monto, String descripcion,
+            Integer fk_apostadores, Integer fk_apuestas,
+            Integer fk_tipomovimientos, Integer fk_carreras) {
+        this.idMovimiento = idMovimiento;
         this.fecha = fecha;
         this.monto = monto;
-        this.observacion = observacion;
+        this.descripcion = descripcion;
         this.fk_apostadores = fk_apostadores;
         this.fk_apuestas = fk_apuestas;
         this.fk_tipomovimientos = fk_tipomovimientos;
         this.fk_carreras = fk_carreras;
     }
 
-    public int getIdmovimientos() {
-        return idmovimientos;
+    public int getIdMovimiento() {
+        return idMovimiento;
     }
 
-    public void setIdmovimientos(int idmovimientos) {
-        this.idmovimientos = idmovimientos;
+    public void setIdMovimiento(int idMovimiento) {
+        this.idMovimiento = idMovimiento;
     }
 
-    public String getFecha() {
+    public LocalDate getFecha() {
         return fecha;
     }
 
-    public void setFecha(String fecha) {
+    public void setFecha(LocalDate fecha) {
         this.fecha = fecha;
     }
 
@@ -53,12 +76,12 @@ public class Movimientos_Model {
         this.monto = monto;
     }
 
-    public String getObservacion() {
-        return observacion;
+    public String getDescripcion() {
+        return descripcion;
     }
 
-    public void setObservacion(String observacion) {
-        this.observacion = observacion;
+    public void setDescripcion(String descripcion) {
+        this.descripcion = descripcion;
     }
 
     public Integer getFk_apostadores() {

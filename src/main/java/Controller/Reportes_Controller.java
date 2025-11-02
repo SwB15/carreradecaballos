@@ -1,49 +1,51 @@
 package Controller;
 
 import Model.ReportesHistorialApostador_Model;
-import net.sf.jasperreports.engine.*;
-import javax.swing.*;
-import javax.swing.table.DefaultTableModel;
-import java.nio.file.Paths;
-import java.util.*;
-import net.sf.jasperreports.engine.data.JRBeanCollectionDataSource;
+import Repository.Apostadores_Repository;
+import Services.Apostadores_Services;
+import Services.Exceptions.ServiceException;
+import Utils.ReportManager; // Se usa la utilidad centralizada
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import javax.swing.JFrame;
 
 public class Reportes_Controller {
 
-    public JasperPrint generarReporte(String cedula, String nombre, JTable tblHistorial) {
+    private final Apostadores_Services apostadoresService;
+
+    public Reportes_Controller() {
+        this.apostadoresService = new Apostadores_Services(new Apostadores_Repository());
+    }
+
+    /**
+     * Orquesta la generación del reporte de historial de un apostador.
+     *
+     * @param owner
+     * @param idApostador
+     * @param cedula
+     * @param nombre
+     * @throws Services.Exceptions.ServiceException
+     */
+    public void generarReporteHistorial(JFrame owner, int idApostador, String cedula, String nombre) throws ServiceException {
         try {
-            // Crear mapa de parámetros
+            // 1. El controlador pide los datos al servicio.
+            List<ReportesHistorialApostador_Model> historial = apostadoresService.consultarHistorial(idApostador, null, null);
+
+            // 2. Se preparan los parámetros específicos para este reporte.
             Map<String, Object> parametros = new HashMap<>();
             parametros.put("Cedula", cedula);
             parametros.put("Nombre", nombre);
 
-            // Extraer datos de la tabla
-            List<ReportesHistorialApostador_Model> apuestasList = new ArrayList<>();
-            DefaultTableModel modelo = (DefaultTableModel) tblHistorial.getModel();
-            for (int i = 0; i < modelo.getRowCount(); i++) {
-                int idApuesta = Integer.parseInt(modelo.getValueAt(i, 0).toString());
-                String apuesta = modelo.getValueAt(i, 4).toString();
-                int monto = Integer.parseInt(modelo.getValueAt(i, 5).toString());
-                String fecha = modelo.getValueAt(i, 6).toString();
-                String caballo = modelo.getValueAt(i, 7).toString();
-                String resultado = modelo.getValueAt(i, 8).toString();
+            // 3. Se llama a la utilidad genérica para que haga todo el trabajo.
+            ReportManager.generarReporte(owner, "Historial de " + nombre, "Perfil.jrxml", parametros, historial);
 
-                apuestasList.add(new ReportesHistorialApostador_Model(idApuesta, apuesta, monto, fecha, caballo, resultado));
-            }
-
-            // Pasar la lista como JRBeanCollectionDataSource
-            JRBeanCollectionDataSource dataSource = new JRBeanCollectionDataSource(apuestasList);
-            parametros.put("ApuestasDataSource", dataSource);
-
-            // Compilar y llenar el reporte
-            final String rutaReporte = Paths.get("src/main/resources/Reports/HistorialApostador.jrxml").toAbsolutePath().toString();
-            JasperReport reporte = JasperCompileManager.compileReport(rutaReporte);
-            return JasperFillManager.fillReport(reporte, parametros, new JREmptyDataSource());
-
-        } catch (Exception e) {
-            JOptionPane.showMessageDialog(null, "Error al generar el reporte: " + e.getMessage());
-            return null;
+        } catch (ServiceException e) {
+            // Se relanza la excepción para que la vista la maneje.
+            throw new ServiceException("Error al preparar los datos del reporte: " + e.getMessage(), e);
         }
     }
 
+    // Aquí podrías añadir más métodos para otros reportes en el futuro.
+    // public void generarReporteDeCarreras(JFrame owner) throws ServiceException { ... }
 }

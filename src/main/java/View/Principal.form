@@ -9,28 +9,12 @@
         <EventHandler event="mouseClicked" listener="java.awt.event.MouseListener" parameters="java.awt.event.MouseEvent" handler="jMenuBar1MouseClicked"/>
       </Events>
       <SubComponents>
-        <Menu class="javax.swing.JMenu" name="mnuCarreras">
-          <Properties>
-            <Property name="text" type="java.lang.String" value="Carreras"/>
-          </Properties>
-          <Events>
-            <EventHandler event="mouseClicked" listener="java.awt.event.MouseListener" parameters="java.awt.event.MouseEvent" handler="mnuCarrerasMouseClicked"/>
-          </Events>
-        </Menu>
         <Menu class="javax.swing.JMenu" name="jMenu2">
           <Properties>
             <Property name="text" type="java.lang.String" value="Juegos"/>
           </Properties>
           <Events>
             <EventHandler event="mouseClicked" listener="java.awt.event.MouseListener" parameters="java.awt.event.MouseEvent" handler="jMenu2MouseClicked"/>
-          </Events>
-        </Menu>
-        <Menu class="javax.swing.JMenu" name="mnuApuestas">
-          <Properties>
-            <Property name="text" type="java.lang.String" value="Apuestas"/>
-          </Properties>
-          <Events>
-            <EventHandler event="mouseClicked" listener="java.awt.event.MouseListener" parameters="java.awt.event.MouseEvent" handler="mnuApuestasMouseClicked"/>
           </Events>
         </Menu>
         <Menu class="javax.swing.JMenu" name="mnuBalance">
@@ -66,20 +50,12 @@
             <EventHandler event="mouseClicked" listener="java.awt.event.MouseListener" parameters="java.awt.event.MouseEvent" handler="jMenu3MouseClicked"/>
           </Events>
         </Menu>
-        <Menu class="javax.swing.JMenu" name="jMenu1">
+        <Menu class="javax.swing.JMenu" name="mnuAjustes">
           <Properties>
             <Property name="text" type="java.lang.String" value="Ajustes"/>
           </Properties>
           <Events>
-            <EventHandler event="mouseClicked" listener="java.awt.event.MouseListener" parameters="java.awt.event.MouseEvent" handler="jMenu1MouseClicked"/>
-          </Events>
-        </Menu>
-        <Menu class="javax.swing.JMenu" name="mnuListaApuestas">
-          <Properties>
-            <Property name="text" type="java.lang.String" value="Lista Apuestas"/>
-          </Properties>
-          <Events>
-            <EventHandler event="mouseClicked" listener="java.awt.event.MouseListener" parameters="java.awt.event.MouseEvent" handler="mnuListaApuestasMouseClicked"/>
+            <EventHandler event="mouseClicked" listener="java.awt.event.MouseListener" parameters="java.awt.event.MouseEvent" handler="mnuAjustesMouseClicked"/>
           </Events>
         </Menu>
         <Menu class="javax.swing.JMenu" name="mnuMicuenta">
@@ -305,6 +281,7 @@
                 <StringItem index="2" value="Inactivo"/>
               </StringArray>
             </Property>
+            <Property name="selectedIndex" type="int" value="1"/>
           </Properties>
           <Events>
             <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="cmbEstadoActionPerformed"/>

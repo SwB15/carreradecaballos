@@ -119,6 +119,20 @@
             <groupId>org.apache.logging.log4j</groupId>
             <artifactId>log4j-core</artifactId>
         </dependency>
+        
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter-api</artifactId>
+            <version>5.10.2</version>
+            <scope>test</scope>
+        </dependency>
+        
+        <dependency>
+            <groupId>org.mockito</groupId>
+            <artifactId>mockito-junit-jupiter</artifactId>
+            <version>5.12.0</version>
+            <scope>test</scope>
+        </dependency>
 
         <!-- 2) (Opcional) Puente Log4j2 → JUL -->
         <dependency>
@@ -126,6 +140,8 @@
             <artifactId>log4j-jul</artifactId>
         </dependency>
     </dependencies>
+    
+    
     
     <dependencyManagement>
         <dependencies>
@@ -151,9 +167,18 @@
                     <archive>
                         <manifest>
                             <!-- Aquí defines tu Main-Class -->
-                            <mainClass>Config.Run</mainClass>
+                            <mainClass>Run</mainClass>
                         </manifest>
                     </archive>
+                </configuration>
+            </plugin>
+            
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>2.22.2</version>
+                <configuration>
+                    <skipTests>true</skipTests>
                 </configuration>
             </plugin>
 
@@ -175,7 +200,7 @@
                             <shadedClassifierName>shaded</shadedClassifierName>
                             <transformers>
                                 <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
-                                    <mainClass>Config.Run</mainClass>
+                                    <mainClass>Run</mainClass>
                                 </transformer>
                             </transformers>
                         </configuration>

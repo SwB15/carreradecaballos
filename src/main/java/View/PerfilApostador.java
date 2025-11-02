@@ -1,9 +1,10 @@
 package View;
 
 import Config.AppPaths;
-import Config.Export_Excel;
 import Controller.Apostadores_Controller;
-import Controller.Reportes_Controller;
+import Model.ReportesHistorialApostador_Model;
+import Services.Exceptions.ServiceException;
+import Utils.Export_Excel;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
@@ -15,12 +16,15 @@ import java.awt.Graphics2D;
 import java.awt.Image;
 import java.awt.Toolkit;
 import java.awt.image.BufferedImage;
+import java.beans.PropertyChangeListener;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
+import java.text.DecimalFormat;
+import java.text.DecimalFormatSymbols;
 import java.text.SimpleDateFormat;
 import java.time.LocalDate;
 import java.time.ZoneId;
@@ -31,11 +35,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.logging.ConsoleHandler;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.imageio.ImageIO;
-import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.ImageIcon;
 import javax.swing.JButton;
@@ -44,7 +46,6 @@ import javax.swing.JFileChooser;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JTable;
-import javax.swing.SwingUtilities;
 import javax.swing.filechooser.FileNameExtensionFilter;
 import javax.swing.table.DefaultTableModel;
 import net.sf.jasperreports.engine.JRException;
@@ -64,13 +65,10 @@ import net.sf.jasperreports.view.JasperViewer;
  */
 public class PerfilApostador extends javax.swing.JDialog {
 
-    Apostadores_Controller controller = new Apostadores_Controller();
-    private static final Logger logger = Logger.getLogger(PerfilApostador.class.getName());
-    String desdeStr = "", hastaStr = "", datefrom = "", dateto = "";
-    LocalDate localDate = LocalDate.now();
-    Date currentDate = Date.from(localDate.atStartOfDay(ZoneId.systemDefault()).toInstant());
+    private final Apostadores_Controller controller;
+    private final int idApostador;
 
-    public PerfilApostador(java.awt.Frame parent, boolean modal, int idApostador) {
+    public PerfilApostador(java.awt.Frame parent, boolean modal, int idApostador, String nombre, String cedula) {
         super(parent, modal);
         initComponents();
         this.setLocationRelativeTo(null);
@@ -80,56 +78,92 @@ public class PerfilApostador extends javax.swing.JDialog {
         txtCedula.setBackground(Color.white);
         txtNombre.setEditable(false);
         txtNombre.setBackground(Color.white);
-        
-        dchDesde.setDate(currentDate);
-        dchHasta.setDate(currentDate);
 
-        // Llenar datefrom/dateto y cargar la tabla inicial
-        fechas();
-        showHistorial(idApostador, datefrom, dateto);
+        this.controller = new Apostadores_Controller();
+        this.idApostador = idApostador;
 
-        // -------- Aquí se añaden los listeners --------
-        // Cuando cambie la fecha "Desde"
-        dchDesde.addPropertyChangeListener("date", evt -> {
-            fechas();  // recalcula datefrom y dateto
-            showHistorial(idApostador, datefrom, dateto);
-        });
+        // Se llenan los campos de texto con los datos recibidos.
+        txtNumero.setText(String.valueOf(idApostador));
+        txtNombre.setText(nombre);
+        txtCedula.setText(cedula);
 
-        // Cuando cambie la fecha "Hasta"
-        dchHasta.addPropertyChangeListener("date", evt -> {
-            fechas();
-            showHistorial(idApostador, datefrom, dateto);
-        });
+        // 1. Se añaden los listeners a los JDateChooser.
+        //    Cualquier cambio en las fechas llamará a actualizarTabla().
+        PropertyChangeListener dateChangeListener = evt -> {
+            if ("date".equals(evt.getPropertyName())) {
+                actualizarTabla();
+            }
+        };
+        dchDesde.addPropertyChangeListener(dateChangeListener);
+        dchHasta.addPropertyChangeListener(dateChangeListener);
 
-        // Si no hay historial, mostrar mensaje y cerrar el JDialog
-        if (!showHistorial(idApostador, datefrom, dateto)) {
-            JOptionPane.showMessageDialog(parent, "El apostador no tiene historial de apuestas.", "Información", JOptionPane.INFORMATION_MESSAGE);
-            this.dispose();
-        }
-//        btnImprimir.setEnabled(false);
+        // Carga inicial de datos
+        actualizarTabla();
     }
 
-    private boolean showHistorial(int id, String datefrom, String dateto) {
-        try {
-            DefaultTableModel model = controller.showHistorial(id, datefrom, dateto);
-            tblPerfil.setModel(model);
+    private void actualizarTabla() {
+        // 1. Obtener fechas de los JDateChoosers de forma segura.
+        Date fechaDesdeDate = dchDesde.getDate();
+        Date fechaHastaDate = dchHasta.getDate();
+        LocalDate fechaDesde = null;
+        LocalDate fechaHasta = null;
 
-            ocultar_columnas(tblPerfil);
-            // Si la tabla está vacía, retornar false
-            if (tblPerfil.getRowCount() == 0) {
-                return false;
+        if (fechaDesdeDate != null) {
+            fechaDesde = fechaDesdeDate.toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
+        }
+        if (fechaHastaDate != null) {
+            fechaHasta = fechaHastaDate.toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
+        }
+
+        // 2. Validar el rango de fechas. Si es inválido, se limpia la tabla y se detiene.
+        if (fechaDesde != null && fechaHasta != null && fechaDesde.isAfter(fechaHasta)) {
+            DefaultTableModel model = (DefaultTableModel) tblPerfil.getModel();
+            if (model != null) {
+                model.setRowCount(0);
+            }
+            return;
+        }
+
+        try {
+            // 1. Pedir la lista de DTOs al controlador
+            List<ReportesHistorialApostador_Model> historial = controller.obtenerHistorial(this.idApostador, fechaDesde, fechaHasta);
+
+            // 2. Construir el TableModel
+            String[] titles = {"ID", "Carrera", "Caballo", "Fecha", "Monto", "Resultado"};
+            DefaultTableModel model = new DefaultTableModel(null, titles) {
+                @Override
+                public boolean isCellEditable(int row, int column) {
+                    return false;
+                }
+            };
+
+            for (ReportesHistorialApostador_Model item : historial) {
+                model.addRow(new Object[]{
+                    item.getIdApuesta(),
+                    item.getApuesta(), // Nombre de la carrera
+                    item.getCaballo(),
+                    item.getFecha(),
+                    item.getMonto(),
+                    item.getResultado()
+                });
             }
 
-            // Si hay datos, llenar los campos
-            txtNumero.setText(String.valueOf(tblPerfil.getValueAt(0, 1)));
-            txtNombre.setText(String.valueOf(tblPerfil.getValueAt(0, 2)));
-            txtCedula.setText(String.valueOf(tblPerfil.getValueAt(0, 3)));
+            // 3. Asignar modelo y renderizador a la tabla
+            tblPerfil.setModel(model);
+            tblPerfil.setDefaultRenderer(Object.class, new PerfilApostador_TableCellRenderer());
 
-            return true;
+            // 4. Llenar los campos de texto si hay historial
+            if (!historial.isEmpty()) {
+                // Aquí podrías obtener los datos del apostador de la primera fila si es necesario
+                // o pasarlos a través del constructor.
+            }
+            
+            ocultar_columnas(tblPerfil);
 
-        } catch (Exception e) {
-            JOptionPane.showMessageDialog(this, "Error al obtener el historial: " + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
-            return false;
+        } catch (ServiceException e) {
+            JOptionPane.showMessageDialog(this, "Error al cargar el historial: " + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+            // Si hay un error al cargar, es buena idea cerrar el diálogo.
+            this.dispose();
         }
     }
 
@@ -137,123 +171,6 @@ public class PerfilApostador extends javax.swing.JDialog {
         table.getColumnModel().getColumn(0).setMaxWidth(0);
         table.getColumnModel().getColumn(0).setMinWidth(0);
         table.getColumnModel().getColumn(0).setPreferredWidth(0);
-
-        table.getColumnModel().getColumn(1).setMaxWidth(0);
-        table.getColumnModel().getColumn(1).setMinWidth(0);
-        table.getColumnModel().getColumn(1).setPreferredWidth(0);
-
-        table.getColumnModel().getColumn(3).setMaxWidth(0);
-        table.getColumnModel().getColumn(3).setMinWidth(0);
-        table.getColumnModel().getColumn(3).setPreferredWidth(0);
-
-        table.getColumnModel().getColumn(4).setMaxWidth(0);
-        table.getColumnModel().getColumn(4).setMinWidth(0);
-        table.getColumnModel().getColumn(4).setPreferredWidth(0);
-
-        table.getColumnModel().getColumn(9).setMaxWidth(0);
-        table.getColumnModel().getColumn(9).setMinWidth(0);
-        table.getColumnModel().getColumn(9).setPreferredWidth(0);
-    }
-
-    private void fechas() {
-        Date desdeDate = dchDesde.getDate();
-        Date hastaDate = dchHasta.getDate();
-
-        // Si alguno es null, no formateamos nada y dejamos los filtros apagados
-        if (desdeDate == null || hastaDate == null) {
-            desdeStr = "";
-            hastaStr = "";
-            datefrom = null;
-            dateto = null;
-            return;
-        }
-
-        // A partir de aquí sabemos que ambos son no-null
-        SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy");
-        desdeStr = sdf.format(desdeDate);
-        hastaStr = sdf.format(hastaDate);
-
-        // Convierte a LocalDate
-        ZoneId zid = ZoneId.systemDefault();
-        LocalDate desde = desdeDate.toInstant().atZone(zid).toLocalDate();
-        LocalDate hasta = hastaDate.toInstant().atZone(zid).toLocalDate();
-
-        // Formato yyyy-MM-dd
-        datefrom = desde.format(DateTimeFormatter.ISO_LOCAL_DATE);
-        dateto = hasta.format(DateTimeFormatter.ISO_LOCAL_DATE);
-    }
-
-    public void mostrarHistorialApostador() {
-        Reportes_Controller reportesController = new Reportes_Controller();
-        JasperPrint reporte = reportesController.generarReporte(txtCedula.getText(), txtNombre.getText(), tblPerfil);
-
-        if (reporte != null) {
-            // Crear el diálogo modal
-            JDialog viewerDialog = new JDialog();
-            viewerDialog.setModal(true);
-            viewerDialog.setTitle("Reporte");
-            viewerDialog.setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
-
-            // Establecer tamaño al máximo de la pantalla (SIN setExtendedState)
-            Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
-            viewerDialog.setSize(screenSize);
-            viewerDialog.setLocationRelativeTo(null); // Centrar la ventana
-
-            // Crear el visor JasperViewer
-            JasperViewer view = new JasperViewer(reporte, false);
-            Container contentPane = view.getContentPane();
-            JRViewerToolbar toolbar = (JRViewerToolbar) ((JRViewer) ((JPanel) contentPane.getComponents()[0]).getComponent(0)).getComponent(0);
-            Component rigidArea = Box.createRigidArea(new Dimension(3, 0));
-            Component rigidArea2 = Box.createRigidArea(new Dimension(3, 0));
-
-            JButton btnSave = (JButton) toolbar.getComponent(0);
-            btnSave.setText("Guardar");
-            btnSave.setPreferredSize(new Dimension(75, 30));
-
-            JButton btnPrint = (JButton) toolbar.getComponent(1);
-            btnPrint.setText("Imprimir");
-            btnPrint.setPreferredSize(new Dimension(75, 30));
-
-            // Remueve los botones de la barra de herramientas
-            toolbar.remove(btnSave);
-            toolbar.remove(btnPrint);
-            toolbar.remove(btnExcel);
-
-            // Añade los botones en el orden deseado
-            // Establecer un borde vacío de 5 píxeles en el lado izquierdo de la barra de herramientas
-            toolbar.setBorder(BorderFactory.createEmptyBorder(0, 5, 0, 0));
-            toolbar.add(btnPrint, 0);
-            toolbar.add(rigidArea, 1);
-            toolbar.add(btnSave, 2);
-            toolbar.add(rigidArea2, 3);
-            toolbar.add(btnExcel, 4);
-            toolbar.add(rigidArea2, 5);
-
-            // Actualiza la barra de herramientas para reflejar los cambios
-            toolbar.revalidate();
-            toolbar.repaint();
-
-            viewerDialog.getContentPane().add(view.getContentPane(), BorderLayout.CENTER);
-
-            // Agregar botón "Cerrar"
-            JButton btnCerrar = new JButton("Cerrar");
-            btnCerrar.addActionListener(e -> viewerDialog.dispose());
-
-            // Agregar el botón en la parte inferior
-            JPanel panelBoton = new JPanel();
-            panelBoton.add(btnCerrar);
-            viewerDialog.getContentPane().add(panelBoton, BorderLayout.SOUTH);
-
-            // Mostrar la ventana
-            viewerDialog.setVisible(true);
-
-            // Darle el foco al botón "Cerrar"
-            SwingUtilities.invokeLater(() -> btnCerrar.requestFocusInWindow());
-
-            ConsoleHandler consoleHandler = new ConsoleHandler();
-            consoleHandler.setLevel(Level.ALL);
-            logger.addHandler(consoleHandler);
-        }
     }
 
     @SuppressWarnings("unchecked")
@@ -417,10 +334,23 @@ public class PerfilApostador extends javax.swing.JDialog {
     }// </editor-fold>//GEN-END:initComponents
 
     private void btnImprimirActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnImprimirActionPerformed
+//        try {
+//            Reportes_Controller reportesController = new Reportes_Controller();
+//            JFrame owner = (JFrame) SwingUtilities.getAncestorOfClass(JFrame.class, this);
+//            reportesController.generarReporteHistorial(
+//                    owner,
+//                    this.idApostador,
+//                    txtCedula.getText(),
+//                    txtNombre.getText()
+//            );
+//        } catch (ServiceException e) {
+//            JOptionPane.showMessageDialog(this, "Error al generar el reporte: " + e.getMessage(), "Error de Reporte", JOptionPane.ERROR_MESSAGE);
+//        }
+
         try {
             DateTimeFormatter fmt = DateTimeFormatter.ofPattern("dd/MM/yyyy");
             String currentdate = LocalDate.now().format(fmt);
-            
+
             URL logoURL = getClass().getResource("/Images/icono5.png");
             String rutaLogo = "";
             if (logoURL == null) {
@@ -445,7 +375,7 @@ public class PerfilApostador extends javax.swing.JDialog {
             }
 
             DefaultTableModel original = (DefaultTableModel) tblPerfil.getModel();
-            int[] colsNoPermitidas = {0, 1, 3, 4, 9};
+            int[] colsNoPermitidas = {0};
             List<Integer> colsPermitidas = new ArrayList<>();
             outer:
             for (int col = 0; col < original.getColumnCount(); col++) {
@@ -460,30 +390,66 @@ public class PerfilApostador extends javax.swing.JDialog {
             for (int colIndex : colsPermitidas) {
                 filtrado.addColumn(original.getColumnName(colIndex));
             }
+
+            // Se crea un formateador para los números, forzando el punto como separador.
+            DecimalFormatSymbols symbols = new DecimalFormatSymbols();
+            symbols.setGroupingSeparator('.');
+
+            // Se crean los formateadores una sola vez fuera del bucle.
+            DateTimeFormatter formateadorFecha = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+            DecimalFormat formateadorNumero = new DecimalFormat("#,###");
+
+            // Bucle que recorre las filas del modelo original
             for (int row = 0; row < original.getRowCount(); row++) {
                 Object[] fila = new Object[colsPermitidas.size()];
                 for (int i = 0; i < colsPermitidas.size(); i++) {
-                    fila[i] = original.getValueAt(row, colsPermitidas.get(i));
+
+                    int originalColIndex = colsPermitidas.get(i);
+                    Object valor = original.getValueAt(row, originalColIndex);
+                    String nombreColumna = original.getColumnName(originalColIndex);
+
+                    // --- INICIO DE LA CORRECCIÓN ---
+                    if (valor instanceof LocalDate) {
+                        // Si el valor es una fecha, se formatea a "dd/MM/yyyy".
+                        fila[i] = ((LocalDate) valor).format(formateadorFecha);
+                    } else if (valor instanceof Number) {
+                        // Si es un número, se formatea con separador de miles.
+                        fila[i] = formateadorNumero.format(valor);
+                    } else {
+                        // Para todo lo demás, se convierte a String (manejando nulos).
+                        fila[i] = (valor == null) ? "" : valor.toString();
+                    }
+                    // --- FIN DE LA CORRECCIÓN ---
                 }
                 filtrado.addRow(fila);
             }
 
             JRTableModelDataSource datasource = new JRTableModelDataSource(filtrado);
             JasperReport jr = JasperCompileManager.compileReport(is);
-
-            String parametroDesde = "";
-            String parametroHasta = "";
             String cedula = "";
+            // Se crea un formateador con el patrón deseado.
+            SimpleDateFormat formatter = new SimpleDateFormat("dd/MM/yyyy");
 
-            if (desdeStr.equals("")) {
-                parametroDesde = "Todos";
+            String parametroDesde;
+            String parametroHasta;
+
+            // --- Procesar Fecha Desde ---
+            Date fechaDesde = dchDesde.getDate();
+            if (fechaDesde != null) {
+                parametroDesde = formatter.format(fechaDesde);
+            } else {
+                parametroDesde = "Todos"; // Valor por defecto si no hay fecha
             }
 
-            if (hastaStr.equals("")) {
+            // --- Procesar Fecha Hasta ---
+            Date fechaHasta = dchHasta.getDate();
+            if (fechaHasta != null) {
+                parametroHasta = formatter.format(fechaHasta);
+            } else {
                 parametroHasta = "Todos";
             }
 
-            if (txtCedula.getText().equals("null")) {
+            if ("null".equals(txtCedula.getText())) { // Es más seguro comparar así para evitar errores si el texto es nulo
                 cedula = "0";
             }
 
@@ -632,7 +598,7 @@ public class PerfilApostador extends javax.swing.JDialog {
                 new Object[]{" ", ""}
         );
 
-        Set<Integer> columnsToSkip = Set.of(0, 1, 3, 4, 9);
+        Set<Integer> columnsToSkip = Set.of(0);
 
         JFileChooser chooser = new JFileChooser();
         chooser.setDialogTitle("Guardar Excel");
@@ -653,10 +619,41 @@ public class PerfilApostador extends javax.swing.JDialog {
         }
 
         try {
-            Export_Excel.export(tblPerfil,
+            DefaultTableModel originalModel = (DefaultTableModel) tblPerfil.getModel();
+
+            // --- INICIO DE LA LÓGICA DE FORMATO ---
+            // 1. Crear un modelo temporal para la exportación.
+            DefaultTableModel modeloParaExportar = new DefaultTableModel();
+            for (int i = 0; i < originalModel.getColumnCount(); i++) {
+                modeloParaExportar.addColumn(originalModel.getColumnName(i));
+            }
+
+            // 2. Definir el formateador de fecha.
+            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+
+            // 3. Copiar los datos, formateando la fecha en el proceso.
+            for (int row = 0; row < originalModel.getRowCount(); row++) {
+                Object[] fila = new Object[originalModel.getColumnCount()];
+                for (int col = 0; col < originalModel.getColumnCount(); col++) {
+                    Object valor = originalModel.getValueAt(row, col);
+
+                    // Si la columna es la de la fecha y el valor es un LocalDate...
+                    if (valor instanceof LocalDate) {
+                        fila[col] = ((LocalDate) valor).format(formatter);
+                    } else {
+                        fila[col] = valor;
+                    }
+                }
+                modeloParaExportar.addRow(fila);
+            }
+            // --- FIN DE LA LÓGICA DE FORMATO ---
+
+            // 4. Se llama al exportador con el modelo ya formateado.
+            Export_Excel.export(modeloParaExportar,
                     "Perfil del Apostador",
                     destino.getAbsolutePath(),
                     columnsToSkip, resumen);
+
             // Abrir automáticamente
             if (Desktop.isDesktopSupported()) {
                 Desktop.getDesktop().open(destino);
@@ -668,7 +665,6 @@ public class PerfilApostador extends javax.swing.JDialog {
             ex.printStackTrace();
         }
     }//GEN-LAST:event_btnExcelActionPerformed
-
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JButton btnExcel;

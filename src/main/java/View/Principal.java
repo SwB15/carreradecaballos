@@ -1,8 +1,13 @@
 package View;
 
 import Config.AppPaths;
-import Config.Export_Excel;
 import Controller.Carreras_Controller;
+import Model.CarreraParaVista_DTO;
+import Model.Vencidos_Model;
+import Repository.Apuestas_Repository;
+import Services.Apuestas_Services;
+import Services.Exceptions.ServiceException;
+import Utils.Export_Excel;
 import java.awt.BorderLayout;
 import java.awt.Component;
 import java.awt.Container;
@@ -19,11 +24,11 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
-import java.nio.file.Paths;
-import java.text.SimpleDateFormat;
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -44,6 +49,7 @@ import javax.swing.JTable;
 import javax.swing.SwingUtilities;
 import javax.swing.filechooser.FileNameExtensionFilter;
 import javax.swing.table.DefaultTableModel;
+import javax.swing.table.TableRowSorter;
 import net.sf.jasperreports.engine.JRException;
 import net.sf.jasperreports.engine.JasperCompileManager;
 import net.sf.jasperreports.engine.JasperFillManager;
@@ -61,122 +67,200 @@ import net.sf.jasperreports.view.JasperViewer;
  */
 public class Principal extends javax.swing.JFrame {
 
-    public static Principal instancia;
-    Carreras_Controller Carreras_controller = new Carreras_Controller();
-    private String stateFilter = "todos";
-    public String statusFilter = "Pendiente", datefrom = "", dateto = "", desdeStr = "", hastaStr = "";
+    private final Carreras_Controller carrerasController;
+    private List<CarreraParaVista_DTO> listaActualDeCarreras;
 
     public Principal() {
         initComponents();
         this.setExtendedState(MAXIMIZED_BOTH);
+        this.carrerasController = new Carreras_Controller();
+
+        // Se llama a un método de inicialización para mantener el constructor limpio.
+        initializeView();
+
         pnlNotificaciones.setVisible(false);
         rbtnPendiente.setSelected(true);
         txtDesde.setVisible(false);
         txtHasta.setVisible(false);
 
-        // Calcular el primer y último día del mes
-        LocalDate hoy = LocalDate.now();
-        LocalDate primer = hoy.withDayOfMonth(1);
-        LocalDate ultimo = hoy.withDayOfMonth(hoy.lengthOfMonth());
-
-        // Asignar esas fechas a los JDateChooser
-        dchDesde.setDate(java.sql.Date.valueOf(primer));
-        dchHasta.setDate(java.sql.Date.valueOf(ultimo));
-
-        // Llenar datefrom/dateto y cargar la tabla inicial
-        fechas();
-        instancia = this;
-        showCarrerasInPrincipal("", stateFilter, statusFilter, datefrom, dateto);
-
-        // -------- Aquí se añaden los listeners --------
-        // Cuando cambie la fecha "Desde"
-        dchDesde.addPropertyChangeListener("date", evt -> {
-            fechas();  // recalcula datefrom y dateto
-            showCarrerasInPrincipal("", stateFilter, statusFilter, datefrom, dateto);
-        });
-
-        // Cuando cambie la fecha "Hasta"
-        dchHasta.addPropertyChangeListener("date", evt -> {
-            fechas();
-            showCarrerasInPrincipal("", stateFilter, statusFilter, datefrom, dateto);
-        });
-
-        // -----------------------------------------------
-        notificacion();
-
-        // Icono de la aplicación
-        File file2 = new File("src/main/resources/Images/icono5.png");
-        //ImageIcon icon = new ImageIcon(getClass().getResource("/recursos/LogoPanaderia.png"));
-        String absolutePath2 = file2.getAbsolutePath();
-        ImageIcon iconoOriginal2 = new ImageIcon(absolutePath2);
-        Image imagenOriginal2 = iconoOriginal2.getImage();
-        this.setIconImage(imagenOriginal2);
-
-        // Ocultar menús hasta login
-        mnuApuestas.setVisible(false);
-        mnuCarreras.setVisible(false);
-        mnuListaApuestas.setVisible(false);
         mnuMicuenta.setVisible(false);
     }
 
-    public void showCarrerasInPrincipal(String search, String stateFilter, String statusFilter, String datefrom, String dateto) {
+    /**
+     * Configura el estado inicial de la vista y carga los datos.
+     */
+    // En View/Principal.java
+    private void initializeView() {
+        pnlNotificaciones.setVisible(false);
+        rbtnPendiente.setSelected(true);
+
+        // Se establecen las fechas del mes actual
+        LocalDate hoy = LocalDate.now();
+        dchDesde.setDate(Date.from(hoy.withDayOfMonth(1).atStartOfDay(ZoneId.systemDefault()).toInstant()));
+        dchHasta.setDate(Date.from(hoy.withDayOfMonth(hoy.lengthOfMonth()).atStartOfDay(ZoneId.systemDefault()).toInstant()));
+
+        // Se añaden listeners solo a los componentes de filtro que existen.
+        // Cada vez que un filtro cambia, se actualiza la tabla.
+        dchDesde.addPropertyChangeListener("date", evt -> actualizarTabla());
+        dchHasta.addPropertyChangeListener("date", evt -> actualizarTabla());
+        cmbEstado.addActionListener(e -> actualizarTabla());
+        rbtnPendiente.addActionListener(e -> actualizarTabla());
+        rbtnFinalizado.addActionListener(e -> actualizarTabla());
+        rbtnTodos.addActionListener(e -> actualizarTabla()); // Asumiendo que tienes un rbtnTodos para la fase
+
+        // Carga inicial de datos
+        actualizarTabla();
+
+        // Lógica para cargar las notificaciones al iniciar la aplicación
+        initializeApplicationState();
+        configurarIconoAplicacion();
+        notificacion();
+    }
+
+    /**
+     * Carga el ícono de la aplicación desde los recursos y lo establece en la
+     * ventana.
+     */
+    private void configurarIconoAplicacion() {
         try {
-            DefaultTableModel model;
-            model = Carreras_controller.showCarrerasInPrincipal(search, stateFilter, statusFilter, datefrom, dateto);
-            tblPrincipal.setModel(model);
-            ocultar_columnas(tblPrincipal);
+            java.net.URL iconURL = getClass().getResource("/Images/icono5.png");
+
+            if (iconURL != null) {
+                ImageIcon icono = new ImageIcon(iconURL);
+                this.setIconImage(icono.getImage());
+            } else {
+                // Este mensaje te ayudará a saber si el archivo no se está encontrando.
+                System.err.println("Error: No se encontró el recurso del ícono en la ruta: /Images/icono5.png");
+            }
         } catch (Exception e) {
-            JOptionPane.showMessageDialog(null, e);
+            System.err.println("Error al cargar el ícono de la aplicación.");
+            e.printStackTrace();
         }
     }
 
+    /**
+     * Carga las notificaciones de apuestas vencidas al iniciar. (Este es el
+     * método que habíamos diseñado previamente para las notificaciones).
+     */
+    private void initializeApplicationState() {
+        try {
+            Apuestas_Services apuestasService = new Apuestas_Services(new Apuestas_Repository());
+            List<Vencidos_Model> apuestasVencidas = apuestasService.consultarApuestasVencidas();
+
+            if (!apuestasVencidas.isEmpty()) {
+                pnlNotificaciones.setVisible(true);
+                lblCantidadNotificaciones.setText(String.valueOf(apuestasVencidas.size()));
+
+                // Se añade el listener para abrir el diálogo de notificaciones
+                pnlNotificaciones.addMouseListener(new java.awt.event.MouseAdapter() {
+                    public void mouseClicked(java.awt.event.MouseEvent evt) {
+                        Notificacion dialogo = new Notificacion(Principal.this, true, apuestasVencidas);
+                        dialogo.setVisible(true);
+                    }
+                });
+            }
+        } catch (ServiceException e) {
+            System.err.println("Error al cargar notificaciones: " + e.getMessage());
+            // Opcionalmente, mostrar un JOptionPane si el error es crítico.
+        }
+    }
+
+    /**
+     * El nuevo método central para cargar y refrescar los datos de la tabla
+     * principal.
+     */
+    public void actualizarTabla() {
+        try {
+            // CORRECCIÓN: Se lee el filtro de estado desde el ComboBox.
+            String statusFilter = cmbEstado.getSelectedItem().toString().toLowerCase();
+
+            String faseFilter = rbtnPendiente.isSelected() ? "pendientes"
+                    : rbtnFinalizado.isSelected() ? "finalizados"
+                    : "todos";
+
+            // 2. Llamar al controlador para obtener los datos
+            List<CarreraParaVista_DTO> listaCarreras = carrerasController.listarCarreras("", faseFilter, statusFilter);
+            this.listaActualDeCarreras = carrerasController.listarCarreras("", faseFilter, statusFilter);
+
+            // 3. Construir el TableModel
+            String[] titles = {"ID", "Nombre", "Fecha", "Fecha Límite", "Ganador", "Participantes", "Comisión", "Observacion", "Estado"};
+            DefaultTableModel model = new DefaultTableModel(null, titles) {
+                @Override
+                public boolean isCellEditable(int row, int column) {
+                    return false;
+                }
+            };
+
+            for (CarreraParaVista_DTO dto : listaCarreras) {
+                model.addRow(new Object[]{
+                    dto.getCarrera().getIdCarrera(),
+                    dto.getCarrera().getNombre(),
+                    dto.getCarrera().getFecha(),
+                    dto.getCarrera().getFechaLimite(),
+                    dto.getNombreGanador() != null ? dto.getNombreGanador() : "Pendiente",
+                    dto.getParticipantes(), // Se pasa la lista completa
+                    dto.getCarrera().getComision(),
+                    dto.getObservacion(),
+                    dto.getNombreEstado()
+                });
+            }
+
+            // 4. Asignar modelo y renderizador
+            tblPrincipal.setModel(model);
+            tblPrincipal.setDefaultRenderer(Object.class, new Principal_TableCellRenderer());
+
+            // 5. Ordenador y columnas
+            TableRowSorter<DefaultTableModel> sorter = new TableRowSorter<>(model);
+            tblPrincipal.setRowSorter(sorter);
+//            ocultar_columnas(tblPrincipal);
+
+        } catch (ServiceException e) {
+            JOptionPane.showMessageDialog(this, "Error al cargar las carreras: " + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    /**
+     * Oculta las columnas deseadas con los índices actualizados.
+     */
     private void ocultar_columnas(JTable table) {
+        // --- ÍNDICES ACTUALIZADOS ---
+        // 0: Id (Oculto)
+        // 1: Nombre
+        // 2: Lugar (Oculto)
+        // 3: Fecha
+        // 4: Fecha Limite
+        // 5: Id Ganador (Oculto)
+        // 6: Observacion
+        // 7: Estado
+        // 8: IDs Caballos (Oculto)
+        // 9: Caballos (Oculto)
+        // 10: Ganador
+        // 11: Comision
+
+        // Oculta "Id" (índice 0)
         table.getColumnModel().getColumn(0).setMaxWidth(0);
         table.getColumnModel().getColumn(0).setMinWidth(0);
         table.getColumnModel().getColumn(0).setPreferredWidth(0);
-
-        table.getColumnModel().getColumn(2).setMaxWidth(0);
-        table.getColumnModel().getColumn(2).setMinWidth(0);
-        table.getColumnModel().getColumn(2).setPreferredWidth(0);
-
-        table.getColumnModel().getColumn(4).setMaxWidth(0);
-        table.getColumnModel().getColumn(4).setMinWidth(0);
-        table.getColumnModel().getColumn(4).setPreferredWidth(0);
-
-        table.getColumnModel().getColumn(7).setMaxWidth(0);
-        table.getColumnModel().getColumn(7).setMinWidth(0);
-        table.getColumnModel().getColumn(7).setPreferredWidth(0);
-
-        table.getColumnModel().getColumn(8).setMaxWidth(0);
-        table.getColumnModel().getColumn(8).setMinWidth(0);
-        table.getColumnModel().getColumn(8).setPreferredWidth(0);
-    }
-
-    private void fechas() {
-        SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy");
-        desdeStr = sdf.format(dchDesde.getDate());
-        hastaStr = sdf.format(dchHasta.getDate());
-
-        System.out.println("desdeStr: " + desdeStr);
-        System.out.println("hastaStr: " + hastaStr);
-
-        // Formateadores para convertir los Strings a LocalDate y LocalTime
-        DateTimeFormatter formatoFecha = DateTimeFormatter.ofPattern("dd/MM/yyyy");
-
-        // Convertir los Strings a LocalDate y LocalTime
-        LocalDate desde = LocalDate.parse(desdeStr, formatoFecha);
-        LocalDate hasta = LocalDate.parse(hastaStr, formatoFecha);
-
-        // Formatearlo a String en formato compatible con MySQL (yyyy-MM-dd HH:mm:ss)
-        DateTimeFormatter formatoMySQL = DateTimeFormatter.ofPattern("yyyy-MM-dd");
-        datefrom = desde.format(formatoMySQL);
-        dateto = hasta.format(formatoMySQL);
-
-        txtDesde.setText("");
-        txtHasta.setText("");
-
-        txtDesde.setText(datefrom);
-        txtHasta.setText(dateto);
+//
+//        // Oculta "Lugar" (índice 2)
+//        table.getColumnModel().getColumn(2).setMaxWidth(0);
+//        table.getColumnModel().getColumn(2).setMinWidth(0);
+//        table.getColumnModel().getColumn(2).setPreferredWidth(0);
+//
+//        // Oculta "Id Ganador" (ahora índice 5)
+//        table.getColumnModel().getColumn(5).setMaxWidth(0);
+//        table.getColumnModel().getColumn(5).setMinWidth(0);
+//        table.getColumnModel().getColumn(5).setPreferredWidth(0);
+//
+//        // Oculta "IDs Caballos" (ahora índice 8)
+//        table.getColumnModel().getColumn(8).setMaxWidth(0);
+//        table.getColumnModel().getColumn(8).setMinWidth(0);
+//        table.getColumnModel().getColumn(8).setPreferredWidth(0);
+//
+//        // Oculta "Caballos" (ahora índice 9)
+//        table.getColumnModel().getColumn(9).setMaxWidth(0);
+//        table.getColumnModel().getColumn(9).setMinWidth(0);
+//        table.getColumnModel().getColumn(9).setPreferredWidth(0);
     }
 
     private void notificacion() {
@@ -227,15 +311,12 @@ public class Principal extends javax.swing.JFrame {
         txtDesde = new javax.swing.JTextField();
         txtHasta = new javax.swing.JTextField();
         jMenuBar1 = new javax.swing.JMenuBar();
-        mnuCarreras = new javax.swing.JMenu();
         jMenu2 = new javax.swing.JMenu();
-        mnuApuestas = new javax.swing.JMenu();
         mnuBalance = new javax.swing.JMenu();
         mnuApostadores = new javax.swing.JMenu();
         mnuCaballos = new javax.swing.JMenu();
         jMenu3 = new javax.swing.JMenu();
-        jMenu1 = new javax.swing.JMenu();
-        mnuListaApuestas = new javax.swing.JMenu();
+        mnuAjustes = new javax.swing.JMenu();
         mnuMicuenta = new javax.swing.JMenu();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
@@ -269,6 +350,7 @@ public class Principal extends javax.swing.JFrame {
         jLabel9.setText("Estado:");
 
         cmbEstado.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "Todos", "Activo", "Inactivo" }));
+        cmbEstado.setSelectedIndex(1);
         cmbEstado.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 cmbEstadoActionPerformed(evt);
@@ -420,14 +502,6 @@ public class Principal extends javax.swing.JFrame {
             }
         });
 
-        mnuCarreras.setText("Carreras");
-        mnuCarreras.addMouseListener(new java.awt.event.MouseAdapter() {
-            public void mouseClicked(java.awt.event.MouseEvent evt) {
-                mnuCarrerasMouseClicked(evt);
-            }
-        });
-        jMenuBar1.add(mnuCarreras);
-
         jMenu2.setText("Juegos");
         jMenu2.addMouseListener(new java.awt.event.MouseAdapter() {
             public void mouseClicked(java.awt.event.MouseEvent evt) {
@@ -435,14 +509,6 @@ public class Principal extends javax.swing.JFrame {
             }
         });
         jMenuBar1.add(jMenu2);
-
-        mnuApuestas.setText("Apuestas");
-        mnuApuestas.addMouseListener(new java.awt.event.MouseAdapter() {
-            public void mouseClicked(java.awt.event.MouseEvent evt) {
-                mnuApuestasMouseClicked(evt);
-            }
-        });
-        jMenuBar1.add(mnuApuestas);
 
         mnuBalance.setText("Balance");
         mnuBalance.addMouseListener(new java.awt.event.MouseAdapter() {
@@ -485,21 +551,13 @@ public class Principal extends javax.swing.JFrame {
         });
         jMenuBar1.add(jMenu3);
 
-        jMenu1.setText("Ajustes");
-        jMenu1.addMouseListener(new java.awt.event.MouseAdapter() {
+        mnuAjustes.setText("Ajustes");
+        mnuAjustes.addMouseListener(new java.awt.event.MouseAdapter() {
             public void mouseClicked(java.awt.event.MouseEvent evt) {
-                jMenu1MouseClicked(evt);
+                mnuAjustesMouseClicked(evt);
             }
         });
-        jMenuBar1.add(jMenu1);
-
-        mnuListaApuestas.setText("Lista Apuestas");
-        mnuListaApuestas.addMouseListener(new java.awt.event.MouseAdapter() {
-            public void mouseClicked(java.awt.event.MouseEvent evt) {
-                mnuListaApuestasMouseClicked(evt);
-            }
-        });
-        jMenuBar1.add(mnuListaApuestas);
+        jMenuBar1.add(mnuAjustes);
 
         mnuMicuenta.setText("Mi Cuenta");
         jMenuBar1.add(mnuMicuenta);
@@ -588,46 +646,61 @@ public class Principal extends javax.swing.JFrame {
     }//GEN-LAST:event_mnuCaballosMouseClicked
 
     private void rbtnFinalizadoActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_rbtnFinalizadoActionPerformed
-        statusFilter = "Finalizado";
-        showCarrerasInPrincipal("", stateFilter, "Finalizado", datefrom, dateto);
+        actualizarTabla();
     }//GEN-LAST:event_rbtnFinalizadoActionPerformed
 
     private void rbtnPendienteActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_rbtnPendienteActionPerformed
-        statusFilter = "Pendiente";
-        showCarrerasInPrincipal("", stateFilter, statusFilter, datefrom, dateto);
+        actualizarTabla();
     }//GEN-LAST:event_rbtnPendienteActionPerformed
 
     private void rbtnTodosActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_rbtnTodosActionPerformed
-        statusFilter = "Todos";
-        showCarrerasInPrincipal("", stateFilter, statusFilter, datefrom, dateto);
+        actualizarTabla();
     }//GEN-LAST:event_rbtnTodosActionPerformed
 
     private void pnlNotificacionesMouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_pnlNotificacionesMouseClicked
-        Notificacion dialog = new Notificacion(f, true);
-        dialog.setVisible(true);
+        try {
+            // Se obtienen los datos de las notificaciones desde el servicio.
+            // NOTA: Debes tener una instancia de Apuestas_Services disponible en tu clase Principal.
+            Apuestas_Services apuestasService = new Apuestas_Services(new Apuestas_Repository());
+            List<Vencidos_Model> apuestasVencidas = apuestasService.consultarApuestasVencidas();
 
-        this.setLocationRelativeTo(null);
-        this.setExtendedState(MAXIMIZED_BOTH);
+            // Se pasan los datos al constructor del diálogo.
+            Notificacion dialogo = new Notificacion(this, true, apuestasVencidas);
+            dialogo.setVisible(true);
+
+        } catch (ServiceException e) {
+            JOptionPane.showMessageDialog(this, "Error al cargar las notificaciones:\n" + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+        }
     }//GEN-LAST:event_pnlNotificacionesMouseClicked
 
-    private void jMenu1MouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_jMenu1MouseClicked
+    private void mnuAjustesMouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_mnuAjustesMouseClicked
         Configuraciones dialog = new Configuraciones(f, true);
         dialog.setVisible(true);
 
         this.setLocationRelativeTo(null);
         this.setExtendedState(MAXIMIZED_BOTH);
-    }//GEN-LAST:event_jMenu1MouseClicked
+    }//GEN-LAST:event_mnuAjustesMouseClicked
 
     private void jMenuBar1MouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_jMenuBar1MouseClicked
 
     }//GEN-LAST:event_jMenuBar1MouseClicked
 
     private void jMenu2MouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_jMenu2MouseClicked
-        NewApuestas dialog = new NewApuestas(f, true);
+//        NewApuestas dialog = new NewApuestas(f, true);
+//        dialog.setVisible(true);
+
+        // 1. Se crea y muestra el diálogo. El código se detiene aquí hasta que se cierre.
+        NewApuestas dialog = new NewApuestas(this, true);
         dialog.setVisible(true);
 
+        // 2. Cuando el diálogo se cierra, se comprueba si se hizo algún cambio.
+        if (dialog.seHizoUnCambio()) {
+            // 3. Si hubo cambios, se actualiza la tabla principal.
+            actualizarTabla();
+        }
         this.setLocationRelativeTo(null);
         this.setExtendedState(MAXIMIZED_BOTH);
+
     }//GEN-LAST:event_jMenu2MouseClicked
 
     private void jMenu3MenuSelected(javax.swing.event.MenuEvent evt) {//GEN-FIRST:event_jMenu3MenuSelected
@@ -646,78 +719,48 @@ public class Principal extends javax.swing.JFrame {
     }//GEN-LAST:event_jMenu3MouseClicked
 
     private void tblPrincipalMouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_tblPrincipalMouseClicked
+        // Se verifica si es un clic derecho para el menú contextual
         if (SwingUtilities.isRightMouseButton(evt)) {
-            int row = tblPrincipal.rowAtPoint(evt.getPoint());
-            if (row != -1) {
-                tblPrincipal.setRowSelectionInterval(row, row);
+            int filaVista = tblPrincipal.rowAtPoint(evt.getPoint());
+            if (filaVista != -1) {
+                tblPrincipal.setRowSelectionInterval(filaVista, filaVista);
 
+                // Se obtiene el DTO completo correspondiente a la fila seleccionada.
+                int filaModelo = tblPrincipal.convertRowIndexToModel(filaVista);
+                CarreraParaVista_DTO carreraSeleccionada = this.listaActualDeCarreras.get(filaModelo);
+
+                // Se crea el menú popup
                 JPopupMenu popup = new JPopupMenu();
-                JMenuItem edit = new JMenuItem("Editar");
-                popup.add(edit);
-
-                edit.addActionListener(e -> {
-                    int colCount = tblPrincipal.getColumnCount();
-                    List<String> rowData = new ArrayList<>(colCount);
-                    for (int col = 0; col < colCount; col++) {
-                        Object val = tblPrincipal.getValueAt(row, col);
-                        rowData.add(val != null ? val.toString() : "");
-                    }
-
+                JMenuItem editItem = new JMenuItem("Editar Carrera");
+                editItem.addActionListener(e -> {
+                    // Se abre la ventana de edición, pasándole el objeto DTO completo.
                     NewApuestas dialog = new NewApuestas(
-                            (Frame) SwingUtilities.getWindowAncestor(tblPrincipal),
-                            true
+                            (Frame) SwingUtilities.getWindowAncestor(this),
+                            true,
+                            carreraSeleccionada // Se pasa el objeto, no una lista de Strings
                     );
-                    dialog.loadRowData(rowData);
                     dialog.setVisible(true);
-                });
 
-                // Mostrar el popup en la posición del clic
+                    // Después de que el diálogo se cierre, se actualiza la tabla por si hubo cambios.
+                    actualizarTabla();
+                });
+                popup.add(editItem);
+
+                // Se pueden añadir más opciones al menú aquí...
+                // JMenuItem verDetallesItem = new JMenuItem("Ver Detalles");
+                // popup.add(verDetallesItem);
                 popup.show(tblPrincipal, evt.getX(), evt.getY());
             }
         }
     }//GEN-LAST:event_tblPrincipalMouseClicked
 
-    private void mnuListaApuestasMouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_mnuListaApuestasMouseClicked
-        ListaApuestas dialog = new ListaApuestas(f, true);
-        dialog.setVisible(true);
-
-        this.setLocationRelativeTo(null);
-        this.setExtendedState(MAXIMIZED_BOTH);
-    }//GEN-LAST:event_mnuListaApuestasMouseClicked
-
-    private void mnuApuestasMouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_mnuApuestasMouseClicked
-        Apuestas dialog = new Apuestas(f, true);
-        dialog.setVisible(true);
-
-        this.setLocationRelativeTo(null);
-        this.setExtendedState(MAXIMIZED_BOTH);
-    }//GEN-LAST:event_mnuApuestasMouseClicked
-
-    private void mnuCarrerasMouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_mnuCarrerasMouseClicked
-        Carreras dialog = new Carreras(f, true);
-        dialog.setVisible(true);
-
-        this.setLocationRelativeTo(null);
-        this.setExtendedState(MAXIMIZED_BOTH);
-    }//GEN-LAST:event_mnuCarrerasMouseClicked
-
     private void cmbEstadoActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_cmbEstadoActionPerformed
-        switch (cmbEstado.getSelectedIndex()) {
-            case 0 ->
-                stateFilter = "Todos";
-            case 1 ->
-                stateFilter = "activo";
-            case 2 ->
-                stateFilter = "inactivo";
-            default -> {
-            }
-        }
-
-        showCarrerasInPrincipal("", stateFilter, statusFilter, datefrom, dateto);
+        actualizarTabla();
     }//GEN-LAST:event_cmbEstadoActionPerformed
 
     private void btnImprimirActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnImprimirActionPerformed
         try {
+            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
             DateTimeFormatter fmt = DateTimeFormatter.ofPattern("dd/MM/yyyy");
             String currentdate = LocalDate.now().format(fmt);
 
@@ -745,7 +788,7 @@ public class Principal extends javax.swing.JFrame {
             }
 
             DefaultTableModel original = (DefaultTableModel) tblPrincipal.getModel();
-            int[] colsNoPermitidas = {0, 2, 4, 7, 8};
+            int[] colsNoPermitidas = {0, 3, 5, 6};
             List<Integer> colsPermitidas = new ArrayList<>();
             outer:
             for (int col = 0; col < original.getColumnCount(); col++) {
@@ -763,7 +806,18 @@ public class Principal extends javax.swing.JFrame {
             for (int row = 0; row < original.getRowCount(); row++) {
                 Object[] fila = new Object[colsPermitidas.size()];
                 for (int i = 0; i < colsPermitidas.size(); i++) {
-                    fila[i] = original.getValueAt(row, colsPermitidas.get(i));
+
+                    int originalColIndex = colsPermitidas.get(i);
+                    Object valor = original.getValueAt(row, originalColIndex);
+
+                    // Si es la columna de la fecha (índice 2) y el valor es un LocalDate...
+                    if (originalColIndex == 2 && valor instanceof LocalDate) {
+                        // ...se formatea a String.
+                        fila[i] = ((LocalDate) valor).format(formatter);
+                    } else {
+                        // Para todas las demás columnas, se copia el valor tal cual.
+                        fila[i] = valor;
+                    }
                 }
                 filtrado.addRow(fila);
             }
@@ -772,8 +826,31 @@ public class Principal extends javax.swing.JFrame {
             JasperReport jr = JasperCompileManager.compileReport(is);
             Map<String, Object> params = new HashMap<>();
             params.put("Logo", rutaLogo);
-            params.put("Desde", desdeStr);
-            params.put("Hasta", hastaStr);
+            // 1. Se define el formato deseado
+
+            // 2. Se procesa la fecha "Desde"
+            Date fechaDesde = dchDesde.getDate();
+            if (fechaDesde != null) {
+                String desdeStr = fechaDesde.toInstant()
+                        .atZone(ZoneId.systemDefault())
+                        .toLocalDate()
+                        .format(formatter);
+                params.put("Desde", desdeStr);
+            } else {
+                params.put("Desde", "N/A"); // O un texto por defecto si la fecha está vacía
+            }
+
+            // 3. Se procesa la fecha "Hasta"
+            Date fechaHasta = dchHasta.getDate();
+            if (fechaHasta != null) {
+                String hastaStr = fechaHasta.toInstant()
+                        .atZone(ZoneId.systemDefault())
+                        .toLocalDate()
+                        .format(formatter);
+                params.put("Hasta", hastaStr);
+            } else {
+                params.put("Hasta", "N/A");
+            }
             params.put("Currentdate", currentdate);
 
             final JasperPrint jasperPrint = JasperFillManager.fillReport(jr, params, datasource);
@@ -895,6 +972,52 @@ public class Principal extends javax.swing.JFrame {
     }//GEN-LAST:event_btnImprimirActionPerformed
 
     private void btnExcelActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnExcelActionPerformed
+//        try {
+        // 1. Obtener los filtros y los datos FRESCOS del controlador.
+//            String statusFilter = cmbEstado.getSelectedItem().toString().toLowerCase();
+//            String faseFilter = rbtnPendiente.isSelected() ? "pendientes" : rbtnFinalizado.isSelected() ? "finalizados" : "todos";
+//            List<CarreraParaVista_DTO> datos = carrerasController.listarCarreras("", faseFilter, statusFilter);
+//
+//            if (datos.isEmpty()) {
+//                JOptionPane.showMessageDialog(this, "No hay datos para exportar.", "Tabla Vacía", JOptionPane.WARNING_MESSAGE);
+//                return;
+//            }
+//
+//            // 2. Pedir al usuario la ubicación del archivo.
+//            JFileChooser chooser = new JFileChooser();
+//            chooser.setDialogTitle("Guardar como Excel");
+//            chooser.setFileFilter(new FileNameExtensionFilter("Excel Workbook (*.xlsx)", "xlsx"));
+//            chooser.setSelectedFile(new File("Reporte_Juegos.xlsx"));
+//            if (chooser.showSaveDialog(this) != JFileChooser.APPROVE_OPTION) {
+//                return; // El usuario canceló.
+//            }
+//
+//            // 3. Preparar los datos en el formato genérico que el exportador necesita.
+//            List<String> headers = List.of("ID", "Nombre", "Fecha", "Fecha Límite", "Ganador", "Comisión", "Observacion", "Estado");
+//            List<List<Object>> dataRows = new ArrayList<>();
+//
+//            for (CarreraParaVista_DTO dto : datos) {
+//                // --- CORRECCIÓN AQUÍ: Se usa Arrays.asList en lugar de List.of ---
+//                dataRows.add(Arrays.asList(
+//                        dto.getCarrera().getIdCarrera(),
+//                        dto.getCarrera().getNombre(),
+//                        dto.getCarrera().getFecha(),
+//                        dto.getCarrera().getFechaLimite(),
+//                        dto.getNombreGanador() != null ? dto.getNombreGanador() : "Pendiente",
+//                        dto.getCarrera().getComision(),
+//                        dto.getObservacion(),
+//                        dto.getNombreEstado()
+//                ));
+//            }
+//
+//            ExcelExporter.export(headers, dataRows, "Juegos", chooser.getSelectedFile().getAbsolutePath());
+//
+//            JOptionPane.showMessageDialog(this, "Excel exportado exitosamente.", "Éxito", JOptionPane.INFORMATION_MESSAGE);
+//
+//        } catch (ServiceException | IOException e) {
+//            JOptionPane.showMessageDialog(this, "Error al exportar a Excel:\n" + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+//        }
+
         DefaultTableModel model = (DefaultTableModel) tblPrincipal.getModel();
         if (model.getRowCount() == 0) {
             JOptionPane.showMessageDialog(this,
@@ -904,7 +1027,7 @@ public class Principal extends javax.swing.JFrame {
             return;
         }
 
-        Set<Integer> columnsToSkip = Set.of(0, 2, 4, 7, 8);
+        Set<Integer> columnsToSkip = Set.of(0, 3, 5, 6);
 
         JFileChooser chooser = new JFileChooser();
         chooser.setDialogTitle("Guardar Excel");
@@ -923,7 +1046,6 @@ public class Principal extends javax.swing.JFrame {
         if (!destino.getName().toLowerCase().endsWith(".xlsx")) {
             destino = new File(destino.getParentFile(), destino.getName() + ".xlsx");
         }
-
         try {
             Export_Excel.export(tblPrincipal,
                     "Juegos",
@@ -988,7 +1110,6 @@ public class Principal extends javax.swing.JFrame {
     private javax.swing.JLabel jLabel2;
     private javax.swing.JLabel jLabel4;
     private javax.swing.JLabel jLabel9;
-    private javax.swing.JMenu jMenu1;
     private javax.swing.JMenu jMenu2;
     private javax.swing.JMenu jMenu3;
     private javax.swing.JMenuBar jMenuBar1;
@@ -1000,12 +1121,10 @@ public class Principal extends javax.swing.JFrame {
     private javax.swing.JSeparator jSeparator3;
     public static javax.swing.JLabel lblCantidadNotificaciones;
     private javax.swing.JLabel lblIcono;
+    private javax.swing.JMenu mnuAjustes;
     private javax.swing.JMenu mnuApostadores;
-    private javax.swing.JMenu mnuApuestas;
     private javax.swing.JMenu mnuBalance;
     private javax.swing.JMenu mnuCaballos;
-    private javax.swing.JMenu mnuCarreras;
-    private javax.swing.JMenu mnuListaApuestas;
     private javax.swing.JMenu mnuMicuenta;
     public static javax.swing.JPanel pnlNotificaciones;
     public static javax.swing.JRadioButton rbtnFinalizado;

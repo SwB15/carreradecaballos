@@ -1,8 +1,10 @@
 package View;
 
 import Config.AppPaths;
-import Config.Export_Excel;
 import Controller.Balance_Controller;
+import Model.ResultadosCarrera_DTO;
+import Services.Exceptions.ServiceException;
+import Utils.Export_Excel;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
@@ -13,7 +15,6 @@ import java.awt.Frame;
 import java.awt.Graphics2D;
 import java.awt.Image;
 import java.awt.Toolkit;
-import java.awt.event.ActionEvent;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.FileInputStream;
@@ -21,8 +22,8 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
-import java.nio.file.Paths;
 import java.text.DecimalFormat;
+import java.text.DecimalFormatSymbols;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -40,9 +41,9 @@ import javax.swing.JDialog;
 import javax.swing.JFileChooser;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
-import javax.swing.JTable;
 import javax.swing.filechooser.FileNameExtensionFilter;
 import javax.swing.table.DefaultTableModel;
+import javax.swing.table.TableRowSorter;
 import net.sf.jasperreports.engine.JRException;
 import net.sf.jasperreports.engine.JasperCompileManager;
 import net.sf.jasperreports.engine.JasperFillManager;
@@ -60,16 +61,27 @@ import net.sf.jasperreports.view.JasperViewer;
  */
 public class Balance extends javax.swing.JDialog {
 
-    Balance_Controller controller = new Balance_Controller();
-    DecimalFormat formateador14 = new DecimalFormat("#,###.###");
-    private HashMap<String, String> CarrerasMap;
-    DateTimeFormatter fmt = DateTimeFormatter.ofPattern("dd/MM/yyyy");
-    String currentdate = LocalDate.now().format(fmt);
+    private final Balance_Controller controller;
+    private HashMap<String, Integer> carrerasMap; // Mapa para relacionar nombre con ID
+    private final DecimalFormat formateador;
 
     public Balance(java.awt.Frame parent, boolean modal) {
         super(parent, modal);
         initComponents();
         this.setLocationRelativeTo(null);
+        // Se configura el formateador una sola vez
+        DecimalFormatSymbols symbols = new DecimalFormatSymbols();
+        symbols.setGroupingSeparator('.');
+        this.formateador = new DecimalFormat("#,###", symbols);
+        this.controller = new Balance_Controller();
+        initializeView();
+    }
+
+    /**
+     * Configura el estado inicial de la vista y carga los datos.
+     */
+    private void initializeView() {
+        // Configuración de la UI
         txtIdcarreras.setVisible(false);
         txtApuestas.setEditable(false);
         txtApuestas.setBackground(Color.white);
@@ -82,113 +94,153 @@ public class Balance extends javax.swing.JDialog {
         txtTotalPagado.setEditable(false);
         txtTotalPagado.setBackground(Color.white);
         txtGanancias.setEditable(false);
-        carrerasCombobox();
+        txtComision.setEditable(false);
+        txtComision.setBackground(Color.white);
+
+        // Se asigna el listener al ComboBox
+        cmbCarreras.addActionListener(e -> actualizarVista());
+
+        // Se cargan las carreras en el ComboBox y se dispara la primera carga de datos.
+        cargarCarrerasCombobox();
     }
 
-    private void showResultados(int idcarreras) {
+//    private void ocultar_columnas(JTable table) {
+//        // Ocultar: ID Apostador, Cédula, Monto Neto
+//        int[] columnasOcultas = {0, 2};
+//        for (int col : columnasOcultas) {
+//            table.getColumnModel().getColumn(col).setMaxWidth(0);
+//            table.getColumnModel().getColumn(col).setMinWidth(0);
+//            table.getColumnModel().getColumn(col).setPreferredWidth(0);
+//        }
+//    }
+    /**
+     * Carga las carreras finalizadas en el ComboBox y selecciona la primera.
+     */
+    private void cargarCarrerasCombobox() {
         try {
-            DefaultTableModel model = controller.showResultados(idcarreras);
-            tblBalance.setModel(model);
-            ocultar_columnas(tblBalance);
-            calcularResultados();
-        } catch (NumberFormatException e) {
-            JOptionPane.showMessageDialog(null, "Error en el formato del número: " + e.getMessage());
-        }
-    }
+            this.carrerasMap = controller.obtenerCarrerasFinalizadasParaCombo();
 
-    private void ocultar_columnas(JTable table) {
-        table.getColumnModel().getColumn(0).setMaxWidth(0);
-        table.getColumnModel().getColumn(0).setMinWidth(0);
-        table.getColumnModel().getColumn(0).setPreferredWidth(0);
-
-        table.getColumnModel().getColumn(2).setMaxWidth(0);
-        table.getColumnModel().getColumn(2).setMinWidth(0);
-        table.getColumnModel().getColumn(2).setPreferredWidth(0);
-    }
-
-    // Método para cargar las carreras en el ComboBox
-    private void carrerasCombobox() {
-        // Obtenemos el HashMap con los Carreras (ID -> nombre)
-        CarrerasMap = controller.fillCarrerasCombobox();
-
-        cmbCarreras.removeAllItems();
-
-        // Agregamos los nombres de los Carreras al ComboBox
-        for (String nombre : CarrerasMap.values()) {
-            cmbCarreras.addItem(nombre);
-        }
-
-        // Si el ComboBox tiene elementos, seleccionamos el primero automáticamente y actualizamos el ID
-        if (cmbCarreras.getItemCount() > 0) {
-            String firstNombre = (String) cmbCarreras.getItemAt(0); // Primer caballo en el ComboBox
-            for (Map.Entry<String, String> entry : CarrerasMap.entrySet()) {
-                if (entry.getValue().equals(firstNombre)) {
-                    // Actualizamos el TextField con el ID del primer caballo
-                    txtIdcarreras.setText(entry.getKey());
-                    showResultados(Integer.parseInt(txtIdcarreras.getText()));
-                    break;
-                }
+            // Para evitar que el listener se dispare múltiples veces al añadir items,
+            // se puede desactivar temporalmente, aunque en este caso no es crítico.
+            cmbCarreras.removeAllItems();
+            for (String nombreCarrera : carrerasMap.keySet()) {
+                cmbCarreras.addItem(nombreCarrera);
             }
+
+            // Si no hay carreras, se limpia la tabla y los totales.
+            if (cmbCarreras.getItemCount() == 0) {
+                tblBalance.setModel(new DefaultTableModel());
+                calcularYMostrarTotales(List.of()); // Pasa una lista vacía
+            }
+
+        } catch (ServiceException e) {
+            JOptionPane.showMessageDialog(this, "Error al cargar las carreras: " + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    /**
+     * Método central que actualiza la tabla y los totales según la carrera
+     * seleccionada.
+     */
+    private void actualizarVista() {
+        String nombreCarreraSeleccionada = (String) cmbCarreras.getSelectedItem();
+        if (nombreCarreraSeleccionada == null || carrerasMap == null) {
+            return;
         }
 
-        // Listener para cmbCarreras (para actualizar el ID al seleccionar un nuevo caballo)
-        cmbCarreras.addActionListener((ActionEvent e) -> {
-            String selectedNombre = (String) cmbCarreras.getSelectedItem();
-            if (selectedNombre != null) {
-                // Buscamos el ID del caballo seleccionado en el HashMap
-                for (Map.Entry<String, String> entry : CarrerasMap.entrySet()) {
-                    if (entry.getValue().equals(selectedNombre)) {
-                        // Actualizamos el TextField con el ID del caballo
-                        txtIdcarreras.setText(entry.getKey());
-                        showResultados(Integer.parseInt(entry.getKey()));
-                        System.out.println("ID Caballo: " + entry.getKey());
-                        break;
+        int idCarrera = carrerasMap.get(nombreCarreraSeleccionada);
+        txtIdcarreras.setText(String.valueOf(idCarrera));
+
+        try {
+            List<ResultadosCarrera_DTO> resultados = controller.obtenerResultadosCarrera(idCarrera);
+
+            String[] titles = {"ID", "Apostador", "Cédula", "Total Apuesto", "Pool Perdedor", "Comision (10%)", "Monto Neto"};
+
+            DefaultTableModel model = new DefaultTableModel(null, titles) {
+                @Override
+                public boolean isCellEditable(int row, int column) {
+                    return false;
+                }
+
+                @Override
+                public Class<?> getColumnClass(int columnIndex) {
+                    if (columnIndex == 1 || columnIndex == 2) {
+                        return String.class;
+                    } else {
+                        return Integer.class; // Se le dice a la tabla que las demás son numéricas
                     }
                 }
+            };
+
+            // --- CORRECCIÓN CLAVE ---
+            // Se añaden los NÚMEROS PUROS al modelo, sin formatear.
+            for (ResultadosCarrera_DTO dto : resultados) {
+                model.addRow(new Object[]{
+                    dto.getIdApostador(),
+                    dto.getNombreApostador(),
+                    dto.getCedulaApostador(),
+                    dto.getTotalApostado(),
+                    dto.getPoolPerdedor(),
+                    dto.getComisionGestor(),
+                    dto.getResultadoFinal()
+                });
             }
-        });
+            // --- FIN DE LA CORRECCIÓN ---
+
+            tblBalance.setModel(model);
+            tblBalance.setRowSorter(new TableRowSorter<>(model));
+
+            // Se le dice a la JTable que use nuestro renderer para las columnas que marcamos como numéricas.
+            tblBalance.setDefaultRenderer(Integer.class, new Balance_TableCellRenderer());
+
+            ocultarColumnas();
+            calcularYMostrarTotales(resultados);
+
+        } catch (ServiceException e) {
+            JOptionPane.showMessageDialog(this, "Error: " + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+        }
     }
 
-    private void calcularResultados() {
-        DefaultTableModel model = (DefaultTableModel) tblBalance.getModel();
+    private void ocultarColumnas() {
+        int[] columnasOcultas = {0, 2}; // Ocultar: ID Apostador, Cédula
+        for (int col : columnasOcultas) {
+            tblBalance.getColumnModel().getColumn(col).setMaxWidth(0);
+            tblBalance.getColumnModel().getColumn(col).setMinWidth(0);
+            tblBalance.getColumnModel().getColumn(col).setPreferredWidth(0);
+        }
+    }
 
-        int totalApostadores = model.getRowCount();
-        int ganadores = 0;
-        int perdedores = 0;
-        long sumApostado = 0;
-        long sumComision = 0;
-        long sumPagado = 0;
+    /**
+     * Calcula los totales a partir de la lista de DTOs y los muestra en los
+     * campos de texto.
+     */
+    private void calcularYMostrarTotales(List<ResultadosCarrera_DTO> resultados) {
+        long ganadores = resultados.stream().filter(r -> r.getResultadoFinal() > 0).count();
+        long perdedores = resultados.size() - ganadores;
+        long sumApostado = resultados.stream().mapToLong(ResultadosCarrera_DTO::getTotalApostado).sum();
+        long sumComision = resultados.stream().mapToLong(ResultadosCarrera_DTO::getComisionGestor).sum();
+        long sumPagado = resultados.stream().filter(r -> r.getResultadoFinal() > 0).mapToLong(ResultadosCarrera_DTO::getResultadoFinal).sum();
 
-        for (int i = 0; i < totalApostadores; i++) {
-            // extraemos los Strings formateados
-            String sTotalApo = model.getValueAt(i, 3).toString();
-            String sPool = model.getValueAt(i, 4).toString();
-            String sComision = model.getValueAt(i, 5).toString();
-            String sMontoNeto = model.getValueAt(i, 6).toString();
-
-            // quitamos separadores de miles (puntos o comas)
-            long totalApo = Long.parseLong(sTotalApo.replace(".", "").replace(",", ""));
-            long pool = Long.parseLong(sPool.replace(".", "").replace(",", ""));
-            long comision = Long.parseLong(sComision.replace(".", "").replace(",", ""));
-            long montoNeto = Long.parseLong(sMontoNeto.replace(".", "").replace(",", ""));
-
-            sumApostado += totalApo;
-            sumComision += comision;
-            if (montoNeto > 0) {
-                ganadores++;
-                sumPagado += montoNeto;
-            } else {
-                perdedores++;
+        // --- CORRECCIÓN CLAVE ---
+        // Se obtiene la comisión de la primera fila si existe, ya que es la misma para toda la carrera.
+        int comisionPorcentaje = 0;
+        if (!resultados.isEmpty()) {
+            try {
+                // Se necesita un método en el controlador para esto
+                comisionPorcentaje = controller.obtenerComisionDeCarrera(carrerasMap.get(cmbCarreras.getSelectedItem()));
+            } catch (ServiceException e) {
+                comisionPorcentaje = 10; // Valor por defecto en caso de error
             }
         }
+        txtComision.setText(comisionPorcentaje + "%");
+        // --- FIN DE LA CORRECCIÓN ---
 
-        // ahora sí, volvemos a formatear para mostrar en los JTextField
-        txtApuestas.setText(formateador14.format(totalApostadores));
-        txtGanadores.setText(formateador14.format(ganadores));
-        txtPerdedores.setText(formateador14.format(perdedores));
-        txtTotalApostado.setText(formateador14.format(sumApostado));
-        txtGanancias.setText(formateador14.format(sumComision));
-        txtTotalPagado.setText(formateador14.format(sumPagado));
+        txtApuestas.setText(String.valueOf(resultados.size()));
+        txtGanadores.setText(String.valueOf(ganadores));
+        txtPerdedores.setText(String.valueOf(perdedores));
+        txtTotalApostado.setText(formateador.format(sumApostado));
+        txtGanancias.setText(formateador.format(sumComision));
+        txtTotalPagado.setText(formateador.format(sumPagado));
     }
 
     @SuppressWarnings("unchecked")
@@ -215,6 +267,8 @@ public class Balance extends javax.swing.JDialog {
         jSeparator1 = new javax.swing.JSeparator();
         btnImprimir = new javax.swing.JButton();
         btnExcel = new javax.swing.JButton();
+        jLabel10 = new javax.swing.JLabel();
+        txtComision = new javax.swing.JTextField();
         jPanel2 = new javax.swing.JPanel();
         jScrollPane2 = new javax.swing.JScrollPane();
         tblBalance = new javax.swing.JTable();
@@ -271,6 +325,8 @@ public class Balance extends javax.swing.JDialog {
             }
         });
 
+        jLabel10.setText("Porcent. de Comisión:");
+
         javax.swing.GroupLayout jPanel1Layout = new javax.swing.GroupLayout(jPanel1);
         jPanel1.setLayout(jPanel1Layout);
         jPanel1Layout.setHorizontalGroup(
@@ -299,7 +355,7 @@ public class Balance extends javax.swing.JDialog {
                                 .addComponent(btnExcel, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)
                                 .addGap(156, 156, 156)
                                 .addComponent(txtIdcarreras, javax.swing.GroupLayout.PREFERRED_SIZE, 39, javax.swing.GroupLayout.PREFERRED_SIZE)))
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 72, Short.MAX_VALUE)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 34, Short.MAX_VALUE)
                         .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                             .addComponent(btnCancelar, javax.swing.GroupLayout.Alignment.TRAILING)
                             .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, jPanel1Layout.createSequentialGroup()
@@ -311,7 +367,11 @@ public class Balance extends javax.swing.JDialog {
                                     .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, jPanel1Layout.createSequentialGroup()
                                         .addComponent(jLabel8)
                                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                        .addComponent(txtTotalPagado, javax.swing.GroupLayout.PREFERRED_SIZE, 100, javax.swing.GroupLayout.PREFERRED_SIZE)))
+                                        .addComponent(txtTotalPagado, javax.swing.GroupLayout.PREFERRED_SIZE, 100, javax.swing.GroupLayout.PREFERRED_SIZE))
+                                    .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, jPanel1Layout.createSequentialGroup()
+                                        .addComponent(jLabel10)
+                                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                        .addComponent(txtComision, javax.swing.GroupLayout.PREFERRED_SIZE, 100, javax.swing.GroupLayout.PREFERRED_SIZE)))
                                 .addGap(134, 134, 134))
                             .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, jPanel1Layout.createSequentialGroup()
                                 .addComponent(jLabel3)
@@ -335,16 +395,17 @@ public class Balance extends javax.swing.JDialog {
                     .addComponent(txtTotalPagado, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addComponent(jLabel8))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(txtGanadores, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(jLabel5)
+                    .addComponent(txtComision, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(jLabel10))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addGroup(jPanel1Layout.createSequentialGroup()
-                        .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                            .addComponent(txtGanadores, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                            .addComponent(jLabel5)
-                            .addComponent(jLabel3))
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                            .addComponent(txtPerdedores, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                            .addComponent(jLabel4)))
+                    .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                        .addComponent(txtPerdedores, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addComponent(jLabel4))
+                    .addComponent(jLabel3)
                     .addComponent(txtGanancias, javax.swing.GroupLayout.PREFERRED_SIZE, 35, javax.swing.GroupLayout.PREFERRED_SIZE))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addComponent(jSeparator1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
@@ -466,7 +527,20 @@ public class Balance extends javax.swing.JDialog {
             for (int row = 0; row < original.getRowCount(); row++) {
                 Object[] fila = new Object[colsPermitidas.size()];
                 for (int i = 0; i < colsPermitidas.size(); i++) {
-                    fila[i] = original.getValueAt(row, colsPermitidas.get(i));
+
+                    int originalColIndex = colsPermitidas.get(i);
+                    Object valor = original.getValueAt(row, originalColIndex);
+
+                    // --- INICIO DE LA CORRECCIÓN ---
+                    // Los índices 3, 4, 5 y 6 corresponden a las columnas numéricas
+                    if ((originalColIndex >= 3 && originalColIndex <= 6) && valor instanceof Number) {
+                        // Si el valor es un número en una de esas columnas, se formatea a String.
+                        fila[i] = formateador.format(valor);
+                    } else {
+                        // Para las demás columnas (como el nombre del apostador), se copia el valor.
+                        fila[i] = (valor == null) ? "" : valor.toString();
+                    }
+                    // --- FIN DE LA CORRECCIÓN ---
                 }
                 filtrado.addRow(fila);
             }
@@ -626,14 +700,14 @@ public class Balance extends javax.swing.JDialog {
                     JOptionPane.WARNING_MESSAGE);
             return;
         }
-        
+
         List<Object[]> resumen = List.of(
                 new Object[]{"Carrera seleccionada: ", cmbCarreras.getSelectedItem()},
                 new Object[]{"Cantidad de apuestas: ", txtApuestas.getText()},
                 new Object[]{"Ganadores: ", txtGanadores.getText()},
                 new Object[]{"Perdedores: ", txtPerdedores.getText()},
                 new Object[]{"Total apostado : ", txtTotalApostado.getText()},
-                new Object[]{"Total abonado: ", txtTotalPagado.getText()},
+                new Object[]{"Total pagado: ", txtTotalPagado.getText()},
                 new Object[]{"Mis ganancias: ", txtGanancias.getText()},
                 new Object[]{" ", ""}
         );
@@ -725,6 +799,7 @@ public class Balance extends javax.swing.JDialog {
     private javax.swing.JButton btnExcel;
     private javax.swing.JButton btnImprimir;
     private javax.swing.JComboBox<String> cmbCarreras;
+    private javax.swing.JLabel jLabel10;
     private javax.swing.JLabel jLabel3;
     private javax.swing.JLabel jLabel4;
     private javax.swing.JLabel jLabel5;
@@ -738,6 +813,7 @@ public class Balance extends javax.swing.JDialog {
     private javax.swing.JSeparator jSeparator1;
     private javax.swing.JTable tblBalance;
     private javax.swing.JTextField txtApuestas;
+    private javax.swing.JTextField txtComision;
     private javax.swing.JTextField txtGanadores;
     private javax.swing.JTextField txtGanancias;
     private javax.swing.JTextField txtIdcarreras;

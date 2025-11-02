@@ -1,31 +1,63 @@
 package Model;
 
+import java.time.LocalDate;
+
+/**
+ * Representa la entidad de una apuesta realizada en una carrera específica.
+ * Contiene todos los detalles de la apuesta, incluyendo montos y estado.
+ */
 public class Apuestas_Model {
 
-    private int idapuestas;
-    private String apuesta;
+    private int idApuesta;
+    private String apuesta; // Un nombre o descripción para la apuesta
     private int monto;
-    private String fecha;
-    private String fechalimite;
+    private LocalDate fecha; // Se usa LocalDate para un manejo seguro de la fecha.
+    private LocalDate fechaLimite; // Se usa LocalDate para la fecha límite.
     private String observacion;
-    private String saldousado;
+    private boolean saldoUsado; // Un booleano es más claro que un String.
+    private int abonado;
+
+    // Se mantiene la nomenclatura para las claves foráneas.
     private int fk_carreras;
     private int fk_caballos;
     private int fk_apostadores;
     private int fk_estadopago;
     private int fk_estados;
 
+    /**
+     * Constructor por defecto.
+     */
     public Apuestas_Model() {
     }
 
-    public Apuestas_Model(int idapuestas, String apuesta, int monto, String fecha, String fechalimite, String observacion, String saldousado, int fk_carreras, int fk_caballos, int fk_apostadores, int fk_estadopago, int fk_estados) {
-        this.idapuestas = idapuestas;
+    /**
+     * Constructor completo para crear una nueva instancia de Apuesta.
+     * @param idApuesta
+     * @param apuesta
+     * @param monto
+     * @param fecha
+     * @param fechaLimite
+     * @param observacion
+     * @param saldoUsado
+     * @param abonado
+     * @param fk_carreras
+     * @param fk_caballos
+     * @param fk_apostadores
+     * @param fk_estadopago
+     * @param fk_estados
+     */
+    public Apuestas_Model(int idApuesta, String apuesta, int monto, LocalDate fecha,
+            LocalDate fechaLimite, String observacion, boolean saldoUsado,
+            int abonado, int fk_carreras, int fk_caballos, int fk_apostadores,
+            int fk_estadopago, int fk_estados) {
+        this.idApuesta = idApuesta;
         this.apuesta = apuesta;
         this.monto = monto;
         this.fecha = fecha;
-        this.fechalimite = fechalimite;
+        this.fechaLimite = fechaLimite;
         this.observacion = observacion;
-        this.saldousado = saldousado;
+        this.saldoUsado = saldoUsado;
+        this.abonado = abonado;
         this.fk_carreras = fk_carreras;
         this.fk_caballos = fk_caballos;
         this.fk_apostadores = fk_apostadores;
@@ -33,12 +65,12 @@ public class Apuestas_Model {
         this.fk_estados = fk_estados;
     }
 
-    public int getIdapuestas() {
-        return idapuestas;
+    public int getIdApuesta() {
+        return idApuesta;
     }
 
-    public void setIdapuestas(int idapuestas) {
-        this.idapuestas = idapuestas;
+    public void setIdApuesta(int idApuesta) {
+        this.idApuesta = idApuesta;
     }
 
     public String getApuesta() {
@@ -57,20 +89,20 @@ public class Apuestas_Model {
         this.monto = monto;
     }
 
-    public String getFecha() {
+    public LocalDate getFecha() {
         return fecha;
     }
 
-    public void setFecha(String fecha) {
+    public void setFecha(LocalDate fecha) {
         this.fecha = fecha;
     }
 
-    public String getFechalimite() {
-        return fechalimite;
+    public LocalDate getFechaLimite() {
+        return fechaLimite;
     }
 
-    public void setFechalimite(String fechalimite) {
-        this.fechalimite = fechalimite;
+    public void setFechaLimite(LocalDate fechaLimite) {
+        this.fechaLimite = fechaLimite;
     }
 
     public String getObservacion() {
@@ -81,14 +113,22 @@ public class Apuestas_Model {
         this.observacion = observacion;
     }
 
-    public String getSaldousado() {
-        return saldousado;
+    public boolean isSaldoUsado() {
+        return saldoUsado;
     }
 
-    public void setSaldousado(String saldousado) {
-        this.saldousado = saldousado;
+    public void setSaldoUsado(boolean saldoUsado) {
+        this.saldoUsado = saldoUsado;
     }
-    
+
+    public int getAbonado() {
+        return abonado;
+    }
+
+    public void setAbonado(int abonado) {
+        this.abonado = abonado;
+    }
+
     public int getFk_carreras() {
         return fk_carreras;
     }

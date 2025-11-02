@@ -1,0 +1,145 @@
+<!-- Created with Jaspersoft Studio version 7.0.1.final using JasperReports Library version 7.0.1-573496633c2b4074e32f433154b543003f7d2498  -->
+<jasperReport name="Pendientes" language="java" pageWidth="595" pageHeight="842" columnWidth="555" leftMargin="20" rightMargin="20" topMargin="20" bottomMargin="20" uuid="26ae772e-a42f-4b02-8a06-fae9d583cffa">
+	<parameter name="Nombre" class="java.lang.String"/>
+	<parameter name="Cedula" class="java.lang.String"/>
+	<parameter name="Total" class="java.lang.String"/>
+	<parameter name="Logo" class="java.lang.String"/>
+	<parameter name="Currentdate" class="java.lang.String"/>
+	<query language="sql"><![CDATA[]]></query>
+	<field name="Carrera" class="java.lang.String"/>
+	<field name="Caballo" class="java.lang.String"/>
+	<field name="Apostado" class="java.lang.String"/>
+	<field name="Abonado" class="java.lang.String"/>
+	<field name="Pendiente" class="java.lang.String"/>
+	<background splitType="Stretch"/>
+	<title height="88" splitType="Stretch">
+		<element kind="image" uuid="d21c5ff9-c275-4217-8d3e-e9b60c7fc451" x="0" y="0" width="50" height="50">
+			<expression><![CDATA[$P{Logo}]]></expression>
+		</element>
+		<element kind="textField" uuid="ed655f07-baca-4e9a-852f-07f4fff854fa" x="427" y="0" width="123" height="20">
+			<expression><![CDATA["Fecha: "+$P{Currentdate}]]></expression>
+		</element>
+		<element kind="textField" uuid="0367d322-0940-4361-a74d-02736fa99454" x="427" y="20" width="123" height="30" hTextAlign="Left">
+			<expression><![CDATA["Página " + $V{PAGE_NUMBER} + " de " + $V{PAGE_NUMBER}]]></expression>
+			<box padding="0"/>
+		</element>
+		<element kind="staticText" uuid="c5feec13-2d4a-48af-8f15-10112fa1e47d" x="60" y="0" width="180" height="20">
+			<text><![CDATA[Apuestas pendientes de cobro]]></text>
+		</element>
+		<element kind="textField" uuid="cd7f2a30-a912-4d30-97b4-572cd75fe6d0" x="60" y="20" width="180" height="20">
+			<expression><![CDATA["Nombre: "+ $P{Nombre}]]></expression>
+		</element>
+		<element kind="textField" uuid="0477a264-c3a3-47c2-9aa3-fd34c8b48767" x="60" y="40" width="180" height="20">
+			<expression><![CDATA["Cedula: "+$P{Cedula}]]></expression>
+		</element>
+		<element kind="textField" uuid="53c323fc-f6a8-4c5a-84ee-edbf08cfbd5c" x="60" y="60" width="180" height="20">
+			<expression><![CDATA["Total: "+$P{Total}]]></expression>
+		</element>
+	</title>
+	<columnHeader height="21">
+		<element kind="staticText" uuid="cf2ed11b-f47d-4239-b635-4677393dc607" x="227" y="0" width="100" height="20" hTextAlign="Center" vTextAlign="Middle">
+			<text><![CDATA[Apostado]]></text>
+			<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="9facbd37-6527-417c-a2ab-7ea01e7a5a36"/>
+			<box>
+				<topPen lineWidth="1.0"/>
+				<leftPen lineWidth="1.0"/>
+				<bottomPen lineWidth="1.0"/>
+				<rightPen lineWidth="1.0"/>
+			</box>
+		</element>
+		<element kind="staticText" uuid="a7f7253a-85ae-4dd1-97ba-3668f91ea157" x="327" y="0" width="100" height="21" hTextAlign="Center" vTextAlign="Middle">
+			<text><![CDATA[Abonado]]></text>
+			<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="5927239b-75ac-40d2-9e3f-92e573f71831"/>
+			<box>
+				<topPen lineWidth="1.0"/>
+				<leftPen lineWidth="1.0"/>
+				<bottomPen lineWidth="1.0"/>
+				<rightPen lineWidth="1.0"/>
+			</box>
+		</element>
+		<element kind="staticText" uuid="fe5894f4-9863-486f-9e69-804fd3bfa567" x="427" y="0" width="100" height="21" hTextAlign="Center" vTextAlign="Middle">
+			<text><![CDATA[Pendiente]]></text>
+			<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="387bbd9b-52a3-4328-b15e-6c8ab57a33f4"/>
+			<box>
+				<topPen lineWidth="1.0"/>
+				<leftPen lineWidth="1.0"/>
+				<bottomPen lineWidth="1.0"/>
+				<rightPen lineWidth="1.0"/>
+			</box>
+		</element>
+		<element kind="staticText" uuid="c36378b1-fb1f-49fe-9df6-7e225683034a" x="127" y="0" width="100" height="21" hTextAlign="Center" vTextAlign="Middle">
+			<text><![CDATA[Caballo]]></text>
+			<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="61e32aa8-6fc8-4c89-8916-e22b4f49dc1f"/>
+			<box>
+				<topPen lineWidth="1.0"/>
+				<leftPen lineWidth="1.0"/>
+				<bottomPen lineWidth="1.0"/>
+				<rightPen lineWidth="1.0"/>
+			</box>
+		</element>
+		<element kind="staticText" uuid="a4fe815d-decb-45cb-84d9-76e1af9c1c72" x="27" y="0" width="100" height="21" hTextAlign="Center" vTextAlign="Middle">
+			<text><![CDATA[Carrera]]></text>
+			<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="4d701241-c547-413f-99ae-67b7ecee21a6"/>
+			<box>
+				<topPen lineWidth="1.0"/>
+				<leftPen lineWidth="1.0"/>
+				<bottomPen lineWidth="1.0"/>
+				<rightPen lineWidth="1.0"/>
+			</box>
+		</element>
+	</columnHeader>
+	<detail>
+		<band height="126" splitType="Stretch">
+			<element kind="textField" uuid="41ce4b5e-90e6-4c2b-b821-95fa90d756be" x="227" y="0" width="100" height="20" hTextAlign="Center" vTextAlign="Middle">
+				<expression><![CDATA[$F{Apostado}]]></expression>
+				<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="9facbd37-6527-417c-a2ab-7ea01e7a5a36"/>
+				<box>
+					<topPen lineWidth="1.0"/>
+					<leftPen lineWidth="1.0"/>
+					<bottomPen lineWidth="1.0"/>
+					<rightPen lineWidth="1.0"/>
+				</box>
+			</element>
+			<element kind="textField" uuid="ae931435-e6ab-4bb1-91b8-96a8c7e9b428" x="327" y="0" width="100" height="20" hTextAlign="Center" vTextAlign="Middle">
+				<expression><![CDATA[$F{Abonado}]]></expression>
+				<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="5927239b-75ac-40d2-9e3f-92e573f71831"/>
+				<box>
+					<topPen lineWidth="1.0"/>
+					<leftPen lineWidth="1.0"/>
+					<bottomPen lineWidth="1.0"/>
+					<rightPen lineWidth="1.0"/>
+				</box>
+			</element>
+			<element kind="textField" uuid="d03ec00e-6eb1-4ddb-811c-d12213103ea5" x="427" y="0" width="100" height="20" hTextAlign="Center" vTextAlign="Middle">
+				<expression><![CDATA[$F{Pendiente}]]></expression>
+				<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="387bbd9b-52a3-4328-b15e-6c8ab57a33f4"/>
+				<box>
+					<topPen lineWidth="1.0"/>
+					<leftPen lineWidth="1.0"/>
+					<bottomPen lineWidth="1.0"/>
+					<rightPen lineWidth="1.0"/>
+				</box>
+			</element>
+			<element kind="textField" uuid="c0391cd0-e4f3-484c-a6c9-024d456be484" x="127" y="0" width="100" height="20" hTextAlign="Center" vTextAlign="Middle">
+				<expression><![CDATA[$F{Caballo}]]></expression>
+				<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="61e32aa8-6fc8-4c89-8916-e22b4f49dc1f"/>
+				<box>
+					<topPen lineWidth="1.0"/>
+					<leftPen lineWidth="1.0"/>
+					<bottomPen lineWidth="1.0"/>
+					<rightPen lineWidth="1.0"/>
+				</box>
+			</element>
+			<element kind="textField" uuid="35cbe51d-d552-49ef-a8e8-17705170dae2" x="27" y="0" width="100" height="20" linkType="None" linkTarget="Self" hTextAlign="Center" vTextAlign="Middle">
+				<expression><![CDATA[$F{Carrera}]]></expression>
+				<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="4d701241-c547-413f-99ae-67b7ecee21a6"/>
+				<box>
+					<topPen lineWidth="1.0"/>
+					<leftPen lineWidth="1.0"/>
+					<bottomPen lineWidth="1.0"/>
+					<rightPen lineWidth="1.0"/>
+				</box>
+			</element>
+		</band>
+	</detail>
+</jasperReport>

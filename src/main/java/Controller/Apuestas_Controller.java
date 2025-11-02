@@ -1,83 +1,84 @@
 package Controller;
 
 import Model.Apuestas_Model;
+import Model.ApuestasParaVista_DTO;
+import Repository.Apuestas_Repository;
 import Services.Apuestas_Services;
-import java.util.Date;
+import Services.Exceptions.ServiceException;
+import java.time.LocalDate;
 import java.util.HashMap;
-import javax.swing.table.DefaultTableModel;
+import java.util.List;
 
+/**
+ * Controlador que gestiona las interacciones entre la Vista y los Servicios
+ * para las Apuestas.
+ */
 public class Apuestas_Controller {
 
-    private final Apuestas_Services services = new Apuestas_Services();
-    private final Apuestas_Model model = new Apuestas_Model();
+    private final Apuestas_Services services;
 
     public Apuestas_Controller() {
+        // El controlador construye la cadena de dependencias.
+        Apuestas_Repository repository = new Apuestas_Repository();
+        this.services = new Apuestas_Services(repository);
     }
 
-    public boolean createApuestas(String apuesta, int monto, String fecha, String fechalimite, String observacion, String saldousado, int foreignKey, int foreignKey2, int foreignKey3, int foreignKey4, int foreignKey5) {
-        model.setApuesta(apuesta);
-        model.setMonto(monto);
-        model.setFecha(fecha);
-        model.setFechalimite(fechalimite);
-        model.setObservacion(observacion);
-        model.setSaldousado(saldousado);
-        model.setFk_carreras(foreignKey);
-        model.setFk_caballos(foreignKey2);
-        model.setFk_apostadores(foreignKey3);
-        model.setFk_estadopago(foreignKey4);
-        model.setFk_estados(foreignKey5);
-        return services.addApuestas(model);
+    /**
+     * Procesa la solicitud de la Vista para crear una nueva apuesta.
+     *
+     * @param apuesta Nombre o descripción de la apuesta.
+     * @param monto Monto apostado.
+     * @param fecha Fecha de la apuesta.
+     * @param fechaLimite Fecha límite para pagar.
+     * @param observacion Notas adicionales.
+     * @param saldoUsado Si se utilizó saldo para el pago.
+     * @param abonado Monto abonado inicialmente.
+     * @param fk_carreras ID de la carrera.
+     * @param fk_caballos ID del caballo.
+     * @param fk_apostadores ID del apostador.
+     * @throws ServiceException Si ocurre un error durante la creación.
+     */
+    public void crearApuesta(String apuesta, int monto, LocalDate fecha, LocalDate fechaLimite,
+            String observacion, boolean saldoUsado, int abonado,
+            int fk_carreras, int fk_caballos, int fk_apostadores) throws ServiceException {
+
+        // Se crea el objeto Model con los datos de la vista.
+        Apuestas_Model nuevaApuesta = new Apuestas_Model(
+                0, apuesta, monto, fecha, fechaLimite, observacion, saldoUsado,
+                abonado, fk_carreras, fk_caballos, fk_apostadores, 1, 1 // fk_estadopago=1 (pendiente), fk_estados=1 (activo)
+        );
+
+        services.crearApuesta(nuevaApuesta);
     }
 
-    public boolean updateApuestas(int id, String apuesta, int monto, String fecha, String fechalimite, String observacion, String saldousado, int foreignKey, int foreignKey2, int foreignKey3, int foreignKey4, int foreignKey5) {
-        model.setIdapuestas(id);
-        model.setApuesta(apuesta);
-        model.setMonto(monto);
-        model.setFecha(fecha);
-        model.setFechalimite(fechalimite);
-        model.setObservacion(observacion);
-        model.setSaldousado(saldousado);
-        model.setFk_carreras(foreignKey);
-        model.setFk_caballos(foreignKey2);
-        model.setFk_apostadores(foreignKey3);
-        model.setFk_estadopago(foreignKey4);
-        model.setFk_estados(foreignKey5);
-        return services.updateApuestas(model);
+    /**
+     * Pide al servicio la lista de apuestas para mostrar en la vista.
+     *
+     * @param idCarrera El ID de la carrera a consultar.
+     * @return Una lista de DTOs con la información de las apuestas.
+     * @throws ServiceException Si la consulta falla.
+     */
+    public List<ApuestasParaVista_DTO> listarApuestasPorCarrera(int idCarrera) throws ServiceException {
+        return services.consultarApuestasParaVista(idCarrera);
     }
 
-    public boolean disableApuestas(int id, int foreignKey, int foreignKey2) {
-        model.setIdapuestas(id);
-        model.setFk_estadopago(foreignKey);
-        model.setFk_estados(foreignKey2);
-        return services.disableApuestas(model);
-    }
-
-    public boolean delete(int id) {
-        model.setIdapuestas(id);
-        return services.delete(model);
-    }
-
-    public DefaultTableModel showApuestas(String search, String stateFilter, Date startDate, Date endDate) {
-        return services.showApuestas(search, stateFilter, startDate, endDate);
-    }
-
-    public int getMaxCodigo() {
-        return services.getMaxCodigo();
-    }
-    
-    public int getMaxid() {
-        return services.getMaxid();
-    }
-
-    public HashMap<String, String> fillApostadoresCombobox() {
-        return services.fillApostadoresCombobox();
-    }
-
-    public HashMap<String, String> fillCarrerasCombobox() {
-        return services.fillCarrerasCombobox();
-    }
-
-    public HashMap<String, String> fillCaballosCombobox(int id) {
-        return services.fillCaballosCombobox(id);
+    /**
+     * Pide al servicio los datos para rellenar los ComboBoxes de la interfaz.
+     *
+     * @param tipo El tipo de combo a rellenar ("apostadores", "carreras",
+     * etc.).
+     * @return Un HashMap listo para ser usado por la vista.
+     * @throws ServiceException Si la consulta falla.
+     */
+    public HashMap<String, Integer> obtenerDatosParaCombo(String tipo) throws ServiceException {
+        return switch (tipo.toLowerCase()) {
+            case "apostadores" ->
+                services.getDatosParaCombo("apostadores", "idapostadores", "nombre");
+            case "carreras" ->
+                services.getDatosParaCombo("carreras", "idcarreras", "nombre");
+            // Se pueden añadir más casos si son necesarios.
+            default ->
+                new HashMap<>();
+        };
     }
 }

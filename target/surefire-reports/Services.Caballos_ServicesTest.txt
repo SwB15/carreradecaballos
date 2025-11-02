@@ -1,0 +1,4 @@
+-------------------------------------------------------------------------------
+Test set: Services.Caballos_ServicesTest
+-------------------------------------------------------------------------------
+Tests run: 2, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.031 s -- in Services.Caballos_ServicesTest
